@@ -1,5 +1,4 @@
-require 'bundler/setup'
-require 'nio4r/websocket'
+require 'nio/websocket'
 
 RSpec.configure do |config|
   # Enable flags like --only-failures and --next-failure
