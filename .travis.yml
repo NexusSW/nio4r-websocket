@@ -1,0 +1,9 @@
+sudo: false
+language: ruby
+rvm:
+  - 2.1.0 # target version (requires old nio4r 1.9.x)
+  - 2.2.2 # Minimum for latest nio4r
+  - ruby-head
+matrix:
+  allow_failures:
+    - rvm: ruby-head
