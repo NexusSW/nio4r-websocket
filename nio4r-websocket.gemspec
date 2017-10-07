@@ -20,8 +20,8 @@ Gem::Specification.new do |spec|
   spec.executables   = spec.files.grep(%r{^exe/}) { |f| File.basename(f) }
   spec.require_paths = ['lib']
 
-  spec.add_dependency 'nio4r'
-  spec.add_dependency 'websocket-driver'
+  spec.add_dependency 'nio4r', '>= 1.2.1', '< 3.0' # Allow older nio4r, if possible, so as to not lock our ruby version to 2.2.2
+  spec.add_dependency 'websocket-driver', '~> 0.7'
 
   spec.add_development_dependency 'bundler'
   spec.add_development_dependency 'rake'
