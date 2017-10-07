@@ -17,7 +17,7 @@ module NIO
     def self.connect(url, options = {}, io = nil)
       io ||= open_socket(url, options)
       io = CLIENT_ADAPTER.new(url, io, options)
-      driver = WebSocket::Driver.client(io, options[:websocket_options])
+      driver = ::WebSocket::Driver.client(io, options[:websocket_options] || {})
       yield driver, io if block_given?
       driver.start
       add_to_reactor io.inner, driver
@@ -30,7 +30,7 @@ module NIO
       @selector.register(server, :r).value = proc do
         accept_socket server, options do |io| # this next block won't run until ssl (if enabled) has started
           io = SERVER_ADAPTER.new(io, options)
-          driver = WebSocket::Driver.server(io, options[:websocket_options])
+          driver = ::WebSocket::Driver.server(io, options[:websocket_options] || {})
           yield driver, io if block_given?
           driver.on :connect do
             driver.start if WebSocket::Driver.websocket? driver.env
@@ -96,7 +96,7 @@ module NIO
 
     # return a TCPServer object listening on the given port with the specified options
     def self.create_server(options)
-      options[:address] ? TCPServer(options[:address], options[:port]) : TCPServer.new(options[:port])
+      options[:address] ? TCPServer.new(options[:address], options[:port]) : TCPServer.new(options[:port])
     end
 
     # noop unless ssl options are specified
