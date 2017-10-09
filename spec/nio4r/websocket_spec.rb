@@ -14,7 +14,7 @@ shared_examples 'Core Tests' do
       @client.ping('wait for it') do
         complete = true
       end
-      Timeout::timeout(10) do
+      Timeout.timeout(10) do
         loop do
           break if complete && @host
           sleep 0.1

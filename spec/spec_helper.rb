@@ -1,3 +1,6 @@
+require 'simplecov'
+SimpleCov.start
+
 require 'nio/websocket'
 
 RSpec.configure do |config|
