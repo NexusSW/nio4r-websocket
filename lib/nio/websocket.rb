@@ -6,6 +6,7 @@ require 'nio'
 require 'socket'
 require 'uri'
 require 'openssl'
+require 'pp'
 
 module NIO
   module WebSocket
@@ -33,7 +34,7 @@ module NIO
           driver = ::WebSocket::Driver.server(io, options[:websocket_options] || {})
           yield driver, io if block_given?
           driver.on :connect do
-            driver.start if WebSocket::Driver.websocket? driver.env
+            driver.start if ::WebSocket::Driver.websocket? driver.env
           end
           add_to_reactor io.inner, driver
         end
@@ -50,9 +51,8 @@ module NIO
     # return an open socket given the url and options
     def self.open_socket(url, options)
       uri = URI(url)
-      options[:ssl] ||= %w(https wss).include? uri.scheme
-      port = uri.port
-      port ||= options[:ssl] ? 443 : 80
+      options[:ssl] = %w(https wss).include? uri.scheme unless options.key? :ssl
+      port = uri.port || (options[:ssl] ? 443 : 80) # redundant?  test uri.port if port is unspecified but because ws: & wss: aren't default protocols we'll maybe still need this(?)
       io = TCPSocket.new uri.hostname, port
       return io unless options[:ssl]
       upgrade_to_ssl(io, options).connect
@@ -72,10 +72,11 @@ module NIO
       if waiting == io
         yield io
       else
-        @selector.register(io, waiting).value = proc do |monitor|
+        monitor = @selector.register(io, waiting)
+        monitor.value = proc do
           waiting = accept_nonblock io
           if waiting == io
-            @selector.deregister io
+            monitor.close
             yield io
           else
             monitor.interests = waiting
@@ -102,7 +103,13 @@ module NIO
     # noop unless ssl options are specified
     def self.upgrade_to_ssl(io, options)
       return io unless options[:ssl]
-      OpenSSL::SSL::SSLSocket.new(io)
+      # client side 'looks' ok with default options, but the server side isn't saying there are any shared transports
+      # supply some ssl options here, on the server, to get that going
+      ctx = OpenSSL::SSL::SSLContext.new
+      (options[:ssl_context] || {}).each do |k, v|
+        ctx.send "#{k}=", v if ctx.respond_to? k
+      end
+      OpenSSL::SSL::SSLSocket.new(io, ctx)
     end
 
     def self.add_to_reactor(io, driver)
@@ -115,15 +122,24 @@ module NIO
 
     def self.ensure_reactor
       @reactor ||= Thread.start do
+        Thread.abort_on_exception = true
         begin
           loop do
             break if @selector
             sleep 0.1
           end
           loop do
-            @selector.select { |monitor| monitor.value.call } # put an inner rescue in here so we can distinguish user & nio errors
+            @selector.select do |monitor|
+              begin
+                monitor.value.call # force proc usage - no other pattern support
+              rescue => e
+                pp 'driver error', e, e.backtrace
+                monitor.close # protect global loop from being crashed by a misbehaving driver, or a sloppy disconnect
+              end
+            end
           end
-        rescue
+        rescue => e
+          pp 'reactor error', e, e.backtrace
           sleep 0.1 # TODO: need to add debugging/logging logic here - but don't spin out a whole core in the meantime
           retry
         end

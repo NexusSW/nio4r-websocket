@@ -7,7 +7,7 @@ module NIO
       end
       attr_reader :inner, :options
       def write(data)
-        inner.write(data, options)
+        inner.write data
       end
     end
   end
