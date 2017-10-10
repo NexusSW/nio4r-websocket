@@ -93,7 +93,7 @@ module NIO
       # when :wait_readable then :r
       # when :wait_writable then :w
       # end
-      return io.accept_nonblock
+      return io if io.accept_nonblock
     rescue IO::WaitReadable
       return :r
     rescue IO::WaitWritable
@@ -108,8 +108,6 @@ module NIO
     # noop unless ssl options are specified
     def self.upgrade_to_ssl(io, options)
       return io unless options[:ssl]
-      # client side 'looks' ok with default options, but the server side isn't saying there are any shared transports
-      # supply some ssl options here, on the server, to get that going
       ctx = OpenSSL::SSL::SSLContext.new
       (options[:ssl_context] || {}).each do |k, v|
         ctx.send "#{k}=", v if ctx.respond_to? k
