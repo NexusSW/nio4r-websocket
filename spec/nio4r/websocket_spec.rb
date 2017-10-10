@@ -80,11 +80,9 @@ describe NIO::WebSocket do
     before :context do
       NIO::WebSocket.listen address: '127.0.0.1', port: 8080 do |driver|
         @host = WireUp.connection driver
-        pp 'host wired up'
       end
-      NIO::WebSocket.connect 'ws://localhost:8080' do |driver|
+      NIO::WebSocket.connect 'ws://127.0.0.1:8080' do |driver|
         @client = WireUp.connection driver
-        pp 'client wired up'
       end
     end
     include_examples 'Core Tests'
@@ -107,11 +105,9 @@ describe NIO::WebSocket do
 
       NIO::WebSocket.listen port: 8443, ssl: true, ssl_context: { key: key, cert: cert } do |driver|
         @host = WireUp.connection driver
-        pp 'host wired up'
       end
       NIO::WebSocket.connect 'wss://localhost:8443', ssl_context: { verify_mode: OpenSSL::SSL::VERIFY_NONE } do |driver|
         @client = WireUp.connection driver
-        pp 'client wired up'
       end
     end
     include_examples 'Core Tests'

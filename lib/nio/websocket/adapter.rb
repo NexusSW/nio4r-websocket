@@ -1,7 +1,8 @@
 module NIO
   module WebSocket
-    class ServerAdapter
-      def initialize(io, options)
+    class Adapter
+      def initialize(io, options, selector)
+        @selector = selector
         @inner = io
         @options = options
       end

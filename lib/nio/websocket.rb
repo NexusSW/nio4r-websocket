@@ -1,7 +1,7 @@
 require 'nio/websocket/version'
 require 'websocket/driver'
-require 'nio/websocket/client_adapter'
-require 'nio/websocket/server_adapter'
+require 'nio/websocket/adapter/client'
+require 'nio/websocket/adapter/server'
 require 'nio'
 require 'socket'
 require 'uri'
@@ -17,24 +17,21 @@ module NIO
     # url is required, regardless, for wrapped WebSocket::Driver HTTP Header generation
     def self.connect(url, options = {}, io = nil)
       io ||= open_socket(url, options)
-      pp 'client connected'
-      io = CLIENT_ADAPTER.new(url, io, options)
+      @selector ||= NIO::Selector.new
+      io = CLIENT_ADAPTER.new(url, io, options, @selector)
       driver = ::WebSocket::Driver.client(io, options[:websocket_options] || {})
       yield driver, io if block_given?
       driver.start
       add_to_reactor io.inner, driver
-      pp 'client running'
       driver
     end
 
     def self.listen(options = {}, server = nil)
       server ||= create_server(options)
-      pp 'server started'
       @selector ||= NIO::Selector.new
       @selector.register(server, :r).value = proc do
         accept_socket server, options do |io| # this next block won't run until ssl (if enabled) has started
-          pp 'wiring up host connection'
-          io = SERVER_ADAPTER.new(io, options)
+          io = SERVER_ADAPTER.new(io, options, @selector)
           driver = ::WebSocket::Driver.server(io, options[:websocket_options] || {})
           yield driver, io if block_given?
           driver.on :connect do
@@ -43,14 +40,12 @@ module NIO
           add_to_reactor io.inner, driver
         end
       end
-      pp 'server listening'
       ensure_reactor
-      pp 'reactor started'
       server
     end
 
-    SERVER_ADAPTER = NIO::WebSocket::ServerAdapter
-    CLIENT_ADAPTER = NIO::WebSocket::ClientAdapter
+    SERVER_ADAPTER = NIO::WebSocket::Adapter::Server
+    CLIENT_ADAPTER = NIO::WebSocket::Adapter::Client
     #
     # End API
 
@@ -125,8 +120,8 @@ module NIO
 
     def self.ensure_reactor
       @reactor ||= Thread.start do
-        Thread.abort_on_exception = true
         begin
+          Thread.abort_on_exception = true
           loop do
             break if @selector
             sleep 0.1
