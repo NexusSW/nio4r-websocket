@@ -1,4 +1,4 @@
-sudo: true
+sudo: false
 language: ruby
 rvm:
   - 2.1.0 # target version (requires old nio4r 1.9.x)

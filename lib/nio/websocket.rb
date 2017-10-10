@@ -17,16 +17,19 @@ module NIO
     # url is required, regardless, for wrapped WebSocket::Driver HTTP Header generation
     def self.connect(url, options = {}, io = nil)
       io ||= open_socket(url, options)
+      pp 'client connected'
       io = CLIENT_ADAPTER.new(url, io, options)
       driver = ::WebSocket::Driver.client(io, options[:websocket_options] || {})
       yield driver, io if block_given?
       driver.start
       add_to_reactor io.inner, driver
+      pp 'client running'
       driver
     end
 
     def self.listen(options = {}, server = nil)
       server ||= create_server(options)
+      pp 'server started'
       @selector ||= NIO::Selector.new
       @selector.register(server, :r).value = proc do
         accept_socket server, options do |io| # this next block won't run until ssl (if enabled) has started
@@ -39,7 +42,9 @@ module NIO
           add_to_reactor io.inner, driver
         end
       end
+      pp 'server listening'
       ensure_reactor
+      pp 'reactor started'
       server
     end
 
