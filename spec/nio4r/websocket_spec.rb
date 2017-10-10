@@ -89,7 +89,15 @@ describe NIO::WebSocket do
   end
   context 'wss://localhost:8443' do
     before :context do
-      key = OpenSSL::PKey::RSA.new 2048
+      retry_count = 3
+      begin
+        key = OpenSSL::PKey::RSA.new 2048
+      rescue OpenSSL::PKey::RSAError
+        retry_count -= 1
+        retry if retry_count > 0
+        raise
+      end
+
       name = OpenSSL::X509::Name.parse 'CN=nobody/DC=testing'
 
       cert = OpenSSL::X509::Certificate.new
