@@ -54,7 +54,7 @@ module NIO
       uri = URI(url)
       options[:ssl] = %w(https wss).include? uri.scheme unless options.key? :ssl
       port = uri.port || (options[:ssl] ? 443 : 80) # redundant?  test uri.port if port is unspecified but because ws: & wss: aren't default protocols we'll maybe still need this(?)
-      pp 'port', port
+      pp 'connect', uri.hostname, port
       io = TCPSocket.new uri.hostname, port
       return io unless options[:ssl]
       upgrade_to_ssl(io, options).connect
