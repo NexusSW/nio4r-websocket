@@ -33,6 +33,7 @@ module NIO
       @selector ||= NIO::Selector.new
       @selector.register(server, :r).value = proc do
         accept_socket server, options do |io| # this next block won't run until ssl (if enabled) has started
+          pp 'wiring up host connection'
           io = SERVER_ADAPTER.new(io, options)
           driver = ::WebSocket::Driver.server(io, options[:websocket_options] || {})
           yield driver, io if block_given?
@@ -92,12 +93,6 @@ module NIO
     end
 
     def self.accept_nonblock(io)
-      # waiting = io.accept_nonblock exception: false
-      # return io unless [:wait_readable, :wait_writable].include?(waiting)
-      # case waiting
-      # when :wait_readable then :r
-      # when :wait_writable then :w
-      # end
       return io if io.accept_nonblock
     rescue IO::WaitReadable
       return :r
