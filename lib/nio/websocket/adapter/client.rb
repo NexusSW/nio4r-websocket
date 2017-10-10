@@ -4,8 +4,8 @@ module NIO
   module WebSocket
     class Adapter
       class Client < Adapter
-        def initialize(url, io, options, selector)
-          super io, options, selector
+        def initialize(url, io, options)
+          super io, options
           @url = url
         end
         attr_reader :url

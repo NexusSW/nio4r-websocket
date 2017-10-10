@@ -18,11 +18,11 @@ module NIO
     def self.connect(url, options = {}, io = nil)
       io ||= open_socket(url, options)
       @selector ||= NIO::Selector.new
-      io = CLIENT_ADAPTER.new(url, io, options, @selector)
+      io = CLIENT_ADAPTER.new(url, io, options)
       driver = ::WebSocket::Driver.client(io, options[:websocket_options] || {})
       yield driver, io if block_given?
       driver.start
-      add_to_reactor io.inner, driver
+      add_read_to_reactor io.inner, driver
       driver
     end
 
@@ -31,13 +31,13 @@ module NIO
       @selector ||= NIO::Selector.new
       @selector.register(server, :r).value = proc do
         accept_socket server, options do |io| # this next block won't run until ssl (if enabled) has started
-          io = SERVER_ADAPTER.new(io, options, @selector)
+          io = SERVER_ADAPTER.new(io, options)
           driver = ::WebSocket::Driver.server(io, options[:websocket_options] || {})
           yield driver, io if block_given?
           driver.on :connect do
             driver.start if ::WebSocket::Driver.websocket? driver.env
           end
-          add_to_reactor io.inner, driver
+          add_read_to_reactor io.inner, driver
         end
       end
       ensure_reactor
@@ -54,6 +54,7 @@ module NIO
       uri = URI(url)
       options[:ssl] = %w(https wss).include? uri.scheme unless options.key? :ssl
       port = uri.port || (options[:ssl] ? 443 : 80) # redundant?  test uri.port if port is unspecified but because ws: & wss: aren't default protocols we'll maybe still need this(?)
+      pp 'port', port
       io = TCPSocket.new uri.hostname, port
       return io unless options[:ssl]
       upgrade_to_ssl(io, options).connect
@@ -110,12 +111,20 @@ module NIO
       OpenSSL::SSL::SSLSocket.new(io, ctx)
     end
 
-    def self.add_to_reactor(io, driver)
+    def self.add_read_to_reactor(io, driver)
       @selector ||= NIO::Selector.new
       @selector.register(io, :r).value = proc do
         driver.parse io.read_nonblock(16384)
       end
       ensure_reactor
+    end
+
+    def self.add_write_to_reactor(io, &blk)
+      @selector ||= NIO::Selector.new
+      monitor = @selector.register(io, :w)
+      monitor.value = blk
+      ensure_reactor
+      monitor
     end
 
     def self.ensure_reactor

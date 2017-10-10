@@ -78,10 +78,10 @@ end
 describe NIO::WebSocket do
   context 'ws://localhost:8080' do
     before :context do
-      NIO::WebSocket.listen address: '127.0.0.1', port: 8080 do |driver|
+      NIO::WebSocket.listen port: 8080 do |driver|
         @host = WireUp.connection driver
       end
-      NIO::WebSocket.connect 'ws://127.0.0.1:8080' do |driver|
+      NIO::WebSocket.connect 'ws://localhost:8080' do |driver|
         @client = WireUp.connection driver
       end
     end
