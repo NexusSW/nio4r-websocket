@@ -87,7 +87,7 @@ describe NIO::WebSocket do
     end
     include_examples 'Core Tests'
   end
-  context 'wss://localhost:443' do
+  context 'wss://localhost:8443' do
     before :context do
       key = OpenSSL::PKey::RSA.new 2048
       name = OpenSSL::X509::Name.parse 'CN=nobody/DC=testing'
@@ -103,10 +103,10 @@ describe NIO::WebSocket do
       cert.issuer = name
       cert.sign key, OpenSSL::Digest::SHA1.new
 
-      NIO::WebSocket.listen port: 443, ssl: true, ssl_context: { key: key, cert: cert } do |driver|
+      NIO::WebSocket.listen port: 8443, ssl: true, ssl_context: { key: key, cert: cert } do |driver|
         @host = WireUp.connection driver
       end
-      NIO::WebSocket.connect 'wss://localhost', ssl_context: { verify_mode: OpenSSL::SSL::VERIFY_NONE } do |driver|
+      NIO::WebSocket.connect 'wss://localhost:8443', ssl_context: { verify_mode: OpenSSL::SSL::VERIFY_NONE } do |driver|
         @client = WireUp.connection driver
       end
     end

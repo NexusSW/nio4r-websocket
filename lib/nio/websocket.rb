@@ -87,12 +87,17 @@ module NIO
     end
 
     def self.accept_nonblock(io)
-      waiting = io.accept_nonblock exception: false
-      return io unless [:wait_readable, :wait_writable].include?(waiting)
-      case waiting
-      when :wait_readable then :r
-      when :wait_writable then :w
-      end
+      # waiting = io.accept_nonblock exception: false
+      # return io unless [:wait_readable, :wait_writable].include?(waiting)
+      # case waiting
+      # when :wait_readable then :r
+      # when :wait_writable then :w
+      # end
+      return io.accept_nonblock
+    rescue IO::WaitReadable
+      return :r
+    rescue IO::WaitWritable
+      return :w
     end
 
     # return a TCPServer object listening on the given port with the specified options
