@@ -17,27 +17,27 @@ module NIO
     # url is required, regardless, for wrapped WebSocket::Driver HTTP Header generation
     def self.connect(url, options = {}, io = nil)
       io ||= open_socket(url, options)
-      @selector ||= NIO::Selector.new
       io = CLIENT_ADAPTER.new(url, io, options)
       driver = ::WebSocket::Driver.client(io, options[:websocket_options] || {})
       yield driver, io if block_given?
+      add_to_reactor io, driver
       driver.start
-      add_read_to_reactor io.inner, driver
       driver
     end
 
     def self.listen(options = {}, server = nil)
       server ||= create_server(options)
-      @selector ||= NIO::Selector.new
-      @selector.register(server, :r).value = proc do
+      connect_monitor = selector.register(server, :r)
+      connect_monitor.value = proc do
         accept_socket server, options do |io| # this next block won't run until ssl (if enabled) has started
           io = SERVER_ADAPTER.new(io, options)
           driver = ::WebSocket::Driver.server(io, options[:websocket_options] || {})
           yield driver, io if block_given?
           driver.on :connect do
+            pp 'driver connected'
             driver.start if ::WebSocket::Driver.websocket? driver.env
           end
-          add_read_to_reactor io.inner, driver
+          add_to_reactor io, driver
         end
       end
       ensure_reactor
@@ -49,6 +49,10 @@ module NIO
     #
     # End API
 
+    def self.selector
+      @selector ||= NIO::Selector.new
+    end
+
     # return an open socket given the url and options
     def self.open_socket(url, options)
       uri = URI(url)
@@ -59,36 +63,40 @@ module NIO
       upgrade_to_ssl(io, options).connect
     end
 
-    # return an open socket from the server given options
-    # ssl negotiation may not be immediately completed if enabled
-    # supply a block to run after negotiation
+    # supply a block to run after protocol negotiation
     def self.accept_socket(server, options)
-      io = server.accept
-      unless options[:ssl]
-        yield io
-        return io
-      end
-      io = upgrade_to_ssl(io, options)
-      waiting = accept_nonblock io
-      if waiting == io
-        yield io
+      waiting = accept_nonblock server
+      return if [:r, :w].include? waiting
+      if options[:ssl]
+        io = upgrade_to_ssl(waiting, options)
+        try_accept_nonblock io do
+          yield io
+        end
       else
-        monitor = @selector.register(io, waiting)
+        yield waiting
+      end
+    end
+
+    def self.try_accept_nonblock(io)
+      waiting = accept_nonblock io
+      if [:r, :w].include? waiting
+        monitor = selector.register(io, :rw)
         monitor.value = proc do
-          waiting = accept_nonblock io
-          if waiting == io
-            monitor.close
-            yield io
+          waiting = accept_nonblock io # just because nio says it's not e.g. 'writable' doesn't mean we don't have something to read & vice versa & but what about spin cases?
+          if [:r, :w].include? waiting
+            monitor.interests = :rw
           else
-            monitor.interests = waiting
+            monitor.close
+            yield waiting
           end
         end
+      else
+        yield waiting
       end
-      io
     end
 
     def self.accept_nonblock(io)
-      return io if io.accept_nonblock
+      return io.accept_nonblock
     rescue IO::WaitReadable
       return :r
     rescue IO::WaitWritable
@@ -110,20 +118,14 @@ module NIO
       OpenSSL::SSL::SSLSocket.new(io, ctx)
     end
 
-    def self.add_read_to_reactor(io, driver)
-      @selector ||= NIO::Selector.new
-      @selector.register(io, :r).value = proc do
-        driver.parse io.read_nonblock(16384)
+    def self.add_to_reactor(io, driver)
+      monitor = selector.register(io.inner, :rw)
+      io.monitor = monitor
+      monitor.value = proc do
+        driver.parse io.inner.read_nonblock(16384) if monitor.readable?
+        io.pump_buffer if monitor.writable?
       end
       ensure_reactor
-    end
-
-    def self.add_write_to_reactor(io, &blk)
-      @selector ||= NIO::Selector.new
-      monitor = @selector.register(io, :w)
-      monitor.value = blk
-      ensure_reactor
-      monitor
     end
 
     def self.ensure_reactor
@@ -131,11 +133,11 @@ module NIO
         begin
           Thread.abort_on_exception = true
           loop do
-            break if @selector
+            break if selector
             sleep 0.1
           end
           loop do
-            @selector.select do |monitor|
+            selector.select do |monitor|
               begin
                 monitor.value.call # force proc usage - no other pattern support
               rescue => e
