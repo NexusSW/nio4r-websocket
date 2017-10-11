@@ -12,6 +12,7 @@ before_script:
   - chmod +x ./cc-test-reporter
   - ./cc-test-reporter before-build
   - ip a
+  - cat /etc/hosts
 after_script:
   - cat Gemfile.lock
   - ./cc-test-reporter after-build --exit-code $TRAVIS_TEST_RESULT

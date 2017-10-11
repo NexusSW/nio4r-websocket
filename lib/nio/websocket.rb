@@ -19,20 +19,20 @@ module NIO
       io ||= open_socket(url, options)
       io = CLIENT_ADAPTER.new(url, io, options)
       driver = ::WebSocket::Driver.client(io, options[:websocket_options] || {})
-      yield(driver, io) if block_given?
+      yield(driver, io)
       add_to_reactor io, driver
       driver.start
       driver
     end
 
-    def self.listen(options = {}, server = nil)
+    def self.listen(options = {}, server = nil, &blk)
       server ||= create_server(options)
       connect_monitor = selector.register(server, :r)
       connect_monitor.value = proc do
         accept_socket server, options do |io| # this next block won't run until ssl (if enabled) has started
           io = SERVER_ADAPTER.new(io, options)
           driver = ::WebSocket::Driver.server(io, options[:websocket_options] || {})
-          yield(driver, io) if block_given?
+          blk.call(driver, io)
           driver.on :connect do
             pp 'driver connected'
             driver.start if ::WebSocket::Driver.websocket? driver.env
@@ -64,20 +64,20 @@ module NIO
     end
 
     # supply a block to run after protocol negotiation
-    def self.accept_socket(server, options)
+    def self.accept_socket(server, options, &blk)
       waiting = accept_nonblock server
       return if [:r, :w].include? waiting
       if options[:ssl]
         io = upgrade_to_ssl(waiting, options)
         try_accept_nonblock io do
-          yield io
+          blk.call io
         end
       else
-        yield waiting
+        blk.call waiting
       end
     end
 
-    def self.try_accept_nonblock(io)
+    def self.try_accept_nonblock(io, &blk)
       waiting = accept_nonblock io
       if [:r, :w].include? waiting
         monitor = selector.register(io, :rw)
@@ -87,11 +87,11 @@ module NIO
             monitor.interests = :rw
           else
             monitor.close
-            yield waiting
+            blk.call waiting
           end
         end
       else
-        yield waiting
+        blk.call waiting
       end
     end
 
@@ -131,7 +131,7 @@ module NIO
     def self.ensure_reactor
       @reactor ||= Thread.start do
         begin
-          Thread.abort_on_exception = true
+          Thread.current.abort_on_exception = true
           loop do
             break if selector
             sleep 0.1
