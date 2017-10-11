@@ -19,7 +19,7 @@ module NIO
       io ||= open_socket(url, options)
       io = CLIENT_ADAPTER.new(url, io, options)
       driver = ::WebSocket::Driver.client(io, options[:websocket_options] || {})
-      yield driver, io if block_given?
+      yield(driver, io) if block_given?
       add_to_reactor io, driver
       driver.start
       driver
@@ -32,7 +32,7 @@ module NIO
         accept_socket server, options do |io| # this next block won't run until ssl (if enabled) has started
           io = SERVER_ADAPTER.new(io, options)
           driver = ::WebSocket::Driver.server(io, options[:websocket_options] || {})
-          yield driver, io if block_given?
+          yield(driver, io) if block_given?
           driver.on :connect do
             pp 'driver connected'
             driver.start if ::WebSocket::Driver.websocket? driver.env

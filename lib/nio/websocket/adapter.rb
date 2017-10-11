@@ -5,18 +5,21 @@ module NIO
         @inner = io
         @options = options
         @buffer = ''
+        @mutex = Mutex.new
       end
       attr_reader :inner, :options
       attr_accessor :monitor
 
       def write(data)
-        @buffer << data
-        monitor.add_interest :w
+        @mutex.synchronize do
+          @buffer << data
+        end
+        monitor.interests = :rw
+        monitor.selector.wakeup
         pump_buffer
       end
 
       def pump_buffer
-        @mutex ||= Mutex.new
         @mutex.synchronize do
           written = 0
           begin
