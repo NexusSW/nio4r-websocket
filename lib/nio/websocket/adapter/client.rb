@@ -5,8 +5,10 @@ module NIO
     class Adapter
       class Client < Adapter
         def initialize(url, io, options)
-          super io, options
           @url = url
+          driver = ::WebSocket::Driver.client(self, options[:websocket_options] || {})
+          super io, driver, options
+          driver.start
         end
         attr_reader :url
       end
