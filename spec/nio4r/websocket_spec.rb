@@ -66,16 +66,11 @@ class ::WebSocket::Driver
 end
 
 module WireUp
-  def self.connection(test_driver)
-    test_driver.on :message do |msg|
-      test_driver.test_onmessage msg.data
-    end
-    test_driver
-  end
-
   def self.add_host(host_driver)
-    @host = connection(host_driver)
-    host
+    host_driver.on :message do |msg|
+      @host.test_onmessage msg.data
+    end
+    @host = host_driver
   end
 
   def self.host
@@ -83,8 +78,10 @@ module WireUp
   end
 
   def self.add_client(client_driver)
-    @client = connection(client_driver)
-    client
+    client_driver.on :message do |msg|
+      @client.test_onmessage msg.data
+    end
+    @client = client_driver
   end
 
   def self.client
@@ -92,7 +89,7 @@ module WireUp
   end
 end
 
-NIO::WebSocket.logger.level = Logger::DEBUG
+NIO::WebSocket.log_traffic = true
 describe NIO::WebSocket do
   context 'ws://localhost:8080' do
     before :context do
@@ -105,37 +102,37 @@ describe NIO::WebSocket do
     end
     include_examples 'Core Tests'
   end
-  # context 'wss://localhost:8443' do
-  #   before :context do
-  #     retry_count = 3
-  #     begin
-  #       key = OpenSSL::PKey::RSA.new 2048
-  #     rescue OpenSSL::PKey::RSAError
-  #       retry_count -= 1
-  #       retry if retry_count > 0
-  #       raise
-  #     end
+  context 'wss://localhost:8443' do
+    before :context do
+      retry_count = 3
+      begin
+        key = OpenSSL::PKey::RSA.new 2048
+      rescue OpenSSL::PKey::RSAError
+        retry_count -= 1
+        retry if retry_count > 0
+        raise
+      end
 
-  #     name = OpenSSL::X509::Name.parse 'CN=nobody/DC=testing'
+      name = OpenSSL::X509::Name.parse 'CN=nobody/DC=testing'
 
-  #     cert = OpenSSL::X509::Certificate.new
-  #     cert.version = 2
-  #     cert.serial = 0
-  #     cert.not_before = Time.now
-  #     cert.not_after = Time.now + 3600
-  #     cert.public_key = key.public_key
-  #     cert.subject = name
+      cert = OpenSSL::X509::Certificate.new
+      cert.version = 2
+      cert.serial = 0
+      cert.not_before = Time.now
+      cert.not_after = Time.now + 3600
+      cert.public_key = key.public_key
+      cert.subject = name
 
-  #     cert.issuer = name
-  #     cert.sign key, OpenSSL::Digest::SHA1.new
+      cert.issuer = name
+      cert.sign key, OpenSSL::Digest::SHA1.new
 
-  #     NIO::WebSocket.listen port: 8443, ssl_context: { key: key, cert: cert } do |driver|
-  #       @host = WireUp.connection driver
-  #     end
-  #     NIO::WebSocket.connect 'wss://localhost:8443', ssl_context: { verify_mode: OpenSSL::SSL::VERIFY_NONE } do |driver|
-  #       @client = WireUp.connection driver
-  #     end
-  #   end
-  #   include_examples 'Core Tests'
-  # end
+      NIO::WebSocket.listen port: 8443, ssl_context: { key: key, cert: cert } do |driver|
+        WireUp.add_host driver
+      end
+      NIO::WebSocket.connect 'wss://localhost:8443', ssl_context: { verify_mode: OpenSSL::SSL::VERIFY_NONE } do |driver|
+        WireUp.add_client driver
+      end
+    end
+    include_examples 'Core Tests'
+  end
 end

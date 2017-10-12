@@ -34,7 +34,7 @@ module NIO
         @monitor ||= WebSocket.selector.register(inner, :rw)
         monitor.value = proc do
           data = inner.read_nonblock(16384) if monitor.readable?
-          WebSocket.logger.debug { "Incoming data on #{inner}:\n#{data}" } if data
+          WebSocket.logger.debug { "Incoming data on #{inner}:\n#{data}" } if data && WebSocket.log_traffic?
           driver.parse data if data
           pump_buffer if monitor.writable?
         end
@@ -55,9 +55,9 @@ module NIO
           written = 0
           begin
             written = inner.write_nonblock @buffer unless @buffer.empty?
-            WebSocket.logger.debug { "Pumped #{written} bytes of data from buffer on #{inner}:\n#{@buffer}" } unless @buffer.empty?
+            WebSocket.logger.debug { "Pumped #{written} bytes of data from buffer to #{inner}:\n#{@buffer}" } unless @buffer.empty? || !WebSocket.log_traffic?
             @buffer.slice!(0, written) if written > 0
-            WebSocket.logger.debug "The buffer is now:\n#{@buffer}" unless @buffer.empty?
+            WebSocket.logger.debug { "The buffer is now:\n#{@buffer}" } unless @buffer.empty? || !WebSocket.log_traffic?
           rescue IO::WaitWritable
             return written
           ensure

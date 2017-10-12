@@ -17,7 +17,7 @@ module NIO
     # url is required, regardless, for wrapped WebSocket::Driver HTTP Header generation
     def self.connect(url, options = {}, io = nil)
       io ||= open_socket(url, options)
-      adapter = NIO::WebSocket::Adapter::Client.new(url, io, options)
+      adapter = CLIENT_ADAPTER.new(url, io, options)
       yield(adapter.driver, adapter)
       logger.info "Client #{io} connected to #{url}"
       adapter.driver
@@ -28,7 +28,7 @@ module NIO
       connect_monitor = selector.register(server, :r)
       connect_monitor.value = proc do
         accept_socket server, options do |io| # this next block won't run until ssl (if enabled) has started
-          adapter = NIO::WebSocket::Adapter::Server.new(io, options)
+          adapter = SERVER_ADAPTER.new(io, options)
           yield(adapter.driver, adapter)
           logger.info "Host accepted client connection #{io} on port #{options[:port]}"
         end
@@ -52,6 +52,15 @@ module NIO
     def self.logger=(logger)
       @logger = logger
     end
+
+    def self.log_traffic?
+      @log_traffic
+    end
+
+    def self.log_traffic=(enable)
+      @log_traffic = enable
+      logger.level = Logger::DEBUG if enable
+    end
     #
     # End API
 
@@ -62,15 +71,14 @@ module NIO
     # return an open socket given the url and options
     def self.open_socket(url, options)
       uri = URI(url)
-      options[:ssl] = %w(https wss).include? uri.scheme unless options.key? :ssl
-      port = uri.port || (options[:ssl] ? 443 : 80) # redundant?  test uri.port if port is unspecified but because ws: & wss: aren't default protocols we'll maybe still need this(?)
+      port = uri.port || (uri.scheme == 'wss' ? 443 : 80) # redundant?  test uri.port if port is unspecified but because ws: & wss: aren't default protocols we'll maybe still need this(?)
       logger.debug "Opening Connection to #{uri.hostname} on port #{port}"
       io = TCPSocket.new uri.hostname, port
-      return io unless options[:ssl]
+      return io unless uri.scheme == 'wss'
       logger.debug "Upgrading Connection #{io} to ssl"
-      io = upgrade_to_ssl(io, options).connect
-      logger.info "Connection #{io} upgraded to ssl"
-      io
+      ssl = upgrade_to_ssl(io, options).connect
+      logger.info "Connection #{io} upgraded to #{ssl}"
+      ssl
     end
 
     # supply a block to run after protocol negotiation
@@ -81,12 +89,12 @@ module NIO
         return
       end
       logger.debug "Receiving new connection #{waiting} on port #{options[:port]}"
-      if options[:ssl]
+      if options[:ssl_context]
         logger.debug "Upgrading Connection #{waiting} to ssl"
-        io = upgrade_to_ssl(waiting, options)
-        try_accept_nonblock io do
-          logger.info "Connection #{io} upgraded to ssl"
-          yield io
+        ssl = upgrade_to_ssl(waiting, options)
+        try_accept_nonblock ssl do
+          logger.info "Connection #{waiting} upgraded to #{ssl}"
+          yield ssl
         end
       else
         yield waiting
@@ -126,7 +134,6 @@ module NIO
 
     # noop unless ssl options are specified
     def self.upgrade_to_ssl(io, options)
-      return io unless options[:ssl]
       ctx = OpenSSL::SSL::SSLContext.new
       (options[:ssl_context] || {}).each do |k, v|
         ctx.send "#{k}=", v if ctx.respond_to? k
