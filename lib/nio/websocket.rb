@@ -6,6 +6,7 @@ require 'nio'
 require 'socket'
 require 'uri'
 require 'openssl'
+require 'logger'
 require 'pp'
 
 module NIO
@@ -22,6 +23,7 @@ module NIO
       yield(driver, io)
       add_to_reactor io, driver
       driver.start
+      logger.info 'Client connected to ' + url
       driver
     end
 
@@ -33,19 +35,31 @@ module NIO
           io = SERVER_ADAPTER.new(io, options)
           driver = ::WebSocket::Driver.server(io, options[:websocket_options] || {})
           blk.call(driver, io)
-          driver.on :connect do
-            pp 'driver connected'
-            driver.start if ::WebSocket::Driver.websocket? driver.env
+          driver.on :connect do |ev|
+            if ::WebSocket::Driver.websocket? driver.env
+              driver.start # SCOPE!
+              logger.debug 'driver connected'
+            end
           end
           add_to_reactor io, driver
+          logger.info 'Host accepted client connection on port ' + options[:port].to_s
         end
       end
       ensure_reactor
+      logger.info 'Host listening for new connections on port ' + options[:port].to_s
       server
     end
 
     SERVER_ADAPTER = NIO::WebSocket::Adapter::Server
     CLIENT_ADAPTER = NIO::WebSocket::Adapter::Client
+
+    def self.logger
+      @logger ||= Logger.new(STDERR, level: :error)
+    end
+
+    def self.logger=(logger)
+      @logger = logger
+    end
     #
     # End API
 
@@ -58,19 +72,29 @@ module NIO
       uri = URI(url)
       options[:ssl] = %w(https wss).include? uri.scheme unless options.key? :ssl
       port = uri.port || (options[:ssl] ? 443 : 80) # redundant?  test uri.port if port is unspecified but because ws: & wss: aren't default protocols we'll maybe still need this(?)
+      logger.debug "Opening Connection to #{uri.hostname} on port #{port}"
       io = TCPSocket.new uri.hostname, port
       return io unless options[:ssl]
-      upgrade_to_ssl(io, options).connect
+      logger.debug "Upgrading Connection #{io} to ssl"
+      io = upgrade_to_ssl(io, options).connect
+      logger.info "Connection #{io} upgraded to ssl"
+      io
     end
 
     # supply a block to run after protocol negotiation
     def self.accept_socket(server, options, &blk)
       waiting = accept_nonblock server
-      return if [:r, :w].include? waiting
+      if [:r, :w].include? waiting
+        logger.warn 'Expected to receive new connection, but the server is not quite ready'
+        return
+      end
+      logger.debug "Receiving new connection #{waiting} on port #{options[:port]}"
       if options[:ssl]
+        logger.debug "Upgrading Connection #{waiting} to ssl"
         io = upgrade_to_ssl(waiting, options)
         try_accept_nonblock io do
-          blk.call io
+          logger.info "Connection #{io} upgraded to ssl"
+          blk.call io # SCOPE!
         end
       else
         blk.call waiting
@@ -84,10 +108,10 @@ module NIO
         monitor.value = proc do
           waiting = accept_nonblock io # just because nio says it's not e.g. 'writable' doesn't mean we don't have something to read & vice versa & but what about spin cases?
           if [:r, :w].include? waiting
-            monitor.interests = :rw
+            monitor.interests = :rw # SCOPE!
           else
-            monitor.close
-            blk.call waiting
+            monitor.close # SCOPE!
+            blk.call waiting # SCOPE!
           end
         end
       else
@@ -122,13 +146,17 @@ module NIO
       monitor = selector.register(io.inner, :rw)
       io.monitor = monitor
       monitor.value = proc do
-        driver.parse io.inner.read_nonblock(16384) if monitor.readable?
-        io.pump_buffer if monitor.writable?
+        data = io.inner.read_nonblock(16384) if monitor.readable? # SCOPE!
+        logger.debug { "Incoming data on #{io.inner}:\n#{data}" } if data # SCOPE!
+        driver.parse data if data # SCOPE!
+        io.pump_buffer if monitor.writable? # SCOPE!
       end
       ensure_reactor
     end
 
     def self.ensure_reactor
+      last_reactor_error_time = Time.now - 1
+      last_reactor_error_count = 0
       @reactor ||= Thread.start do
         begin
           Thread.current.abort_on_exception = true
@@ -141,20 +169,25 @@ module NIO
               begin
                 monitor.value.call # force proc usage - no other pattern support
               rescue => e
-                pp 'driver error', e, e.backtrace
+                logger.error "Error occured in callback on socket #{monitor.io}.  No longer handling this connection.\n#{e}\n#{e.message}\n#{e.backtrace}"
                 monitor.close # protect global loop from being crashed by a misbehaving driver, or a sloppy disconnect
               end
             end
           end
         rescue => e
-          pp 'reactor error', e, e.backtrace
-          sleep 0.1 # TODO: need to add debugging/logging logic here - but don't spin out a whole core in the meantime
-          retry
+          logger.fatal "Error occured in reactor subsystem.  Trying again.\n#{e}\n#{e.message}\n#{e.backtrace}"
+          last_reactor_error_count = 0 if last_reactor_error_time + 1 <= Time.now
+          last_reactor_error_time = Time.now
+          last_reactor_error_count += 1
+          sleep 0.1
+          retry if last_reactor_error_count <= 5
+          raise
         end
       end
     end
 
     def self.reset
+      logger.info 'Resetting reactor subsystem'
       @selector = nil
       return unless @reactor
       @reactor.exit

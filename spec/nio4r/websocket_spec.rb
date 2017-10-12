@@ -59,7 +59,7 @@ shared_examples 'Core Tests' do
 end
 
 class ::WebSocket::Driver
-  def onmessage(msg)
+  def test_onmessage(msg)
     @last_message = msg
   end
   attr_reader :last_message
@@ -68,12 +68,13 @@ end
 module WireUp
   def self.connection(driver)
     driver.on :message do |msg|
-      driver.onmessage msg.data
+      driver.test_onmessage msg.data
     end
     driver
   end
 end
 
+NIO::WebSocket.logger.level = :debug
 describe NIO::WebSocket do
   context 'ws://localhost:8080' do
     before :context do
@@ -110,7 +111,7 @@ describe NIO::WebSocket do
   #     cert.issuer = name
   #     cert.sign key, OpenSSL::Digest::SHA1.new
 
-  #     NIO::WebSocket.listen port: 8443, ssl: true, ssl_context: { key: key, cert: cert } do |driver|
+  #     NIO::WebSocket.listen port: 8443, ssl_context: { key: key, cert: cert } do |driver|
   #       @host = WireUp.connection driver
   #     end
   #     NIO::WebSocket.connect 'wss://localhost:8443', ssl_context: { verify_mode: OpenSSL::SSL::VERIFY_NONE } do |driver|

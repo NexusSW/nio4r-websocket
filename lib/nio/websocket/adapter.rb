@@ -24,7 +24,9 @@ module NIO
           written = 0
           begin
             written = inner.write_nonblock @buffer unless @buffer.empty?
+            WebSocket.logger.debug { "Pumped #{written} bytes of data from buffer on #{inner}:\n#{@buffer}" } unless @buffer.empty?
             @buffer.slice!(0, written) if written > 0
+            WebSocket.logger.debug "The buffer is now:\n#{@buffer}" unless @buffer.empty?
           rescue IO::WaitWritable
             return written
           ensure
