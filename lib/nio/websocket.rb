@@ -42,7 +42,11 @@ module NIO
     CLIENT_ADAPTER = NIO::WebSocket::Adapter::Client
 
     def self.logger
-      @logger ||= Logger.new(STDERR, level: :error)
+      @logger ||= begin
+      logger = Logger.new(STDERR)
+      logger.level = Logger::ERROR
+      logger
+    end
     end
 
     def self.logger=(logger)
