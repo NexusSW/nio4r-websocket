@@ -144,9 +144,11 @@ module NIO
     def self.ensure_reactor
       last_reactor_error_time = Time.now - 1
       last_reactor_error_count = 0
+      logger.debug 'Starting reactor'
       @reactor ||= Thread.start do
+        Thread.current.abort_on_exception = true
+        logger.info 'Reactor started'
         begin
-          Thread.current.abort_on_exception = true
           loop do
             break if selector
             sleep 0.1
