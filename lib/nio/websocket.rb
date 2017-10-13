@@ -63,6 +63,14 @@ module NIO
       @log_traffic = enable
       logger.level = Logger::DEBUG if enable
     end
+
+    def self.reset
+      logger.info 'Resetting reactor subsystem'
+      @selector = nil
+      return unless @reactor
+      @reactor.exit
+      @reactor = nil
+    end
     #
     # End API
 
@@ -81,6 +89,10 @@ module NIO
       ssl = upgrade_to_ssl(io, options).connect
       logger.info "Connection #{io} upgraded to #{ssl}"
       ssl
+    end
+
+    def self.create_server(options)
+      options[:address] ? TCPServer.new(options[:address], options[:port]) : TCPServer.new(options[:port])
     end
 
     # supply a block to run after protocol negotiation
@@ -108,9 +120,9 @@ module NIO
       if [:r, :w].include? waiting
         monitor = selector.register(io, :rw)
         monitor.value = proc do
-          waiting = accept_nonblock io # just because nio says it's not e.g. 'writable' doesn't mean we don't have something to read & vice versa & but what about spin cases?
+          waiting = accept_nonblock io
           if [:r, :w].include? waiting
-            monitor.interests = :rw
+            monitor.interests = :rw # just because nio says it's not e.g. 'writable' doesn't mean we don't have something to read & vice versa & but what about spin cases?
           else
             monitor.close
             yield waiting
@@ -129,12 +141,6 @@ module NIO
       return :w
     end
 
-    # return a TCPServer object listening on the given port with the specified options
-    def self.create_server(options)
-      options[:address] ? TCPServer.new(options[:address], options[:port]) : TCPServer.new(options[:port])
-    end
-
-    # noop unless ssl options are specified
     def self.upgrade_to_ssl(io, options)
       ctx = OpenSSL::SSL::SSLContext.new
       (options[:ssl_context] || {}).each do |k, v|
@@ -151,13 +157,9 @@ module NIO
         logger.info 'Reactor started'
         begin
           loop do
-            break if selector
-            sleep 0.1
-          end
-          loop do
             selector.select 0.1 do |monitor|
               begin
-                monitor.value.call # force proc usage - no other pattern support
+                monitor.value.call if monitor.value.respond_to? :call # force proc usage - no other pattern support
               rescue => e
                 logger.error "Error occured in callback on socket #{monitor.io}.  No longer handling this connection."
                 logger.error e.message
@@ -165,7 +167,7 @@ module NIO
                 monitor.close # protect global loop from being crashed by a misbehaving driver, or a sloppy disconnect
               end
             end
-            Thread.pass
+            Thread.pass # give other threads a chance at manipulating our selector (e.g. a new connection on the main thread trying to register)
           end
         rescue => e
           logger.fatal 'Error occured in reactor subsystem.  Trying again.'
@@ -176,14 +178,6 @@ module NIO
           retry
         end
       end
-    end
-
-    def self.reset
-      logger.info 'Resetting reactor subsystem'
-      @selector = nil
-      return unless @reactor
-      @reactor.exit
-      @reactor = nil
     end
   end
 end
