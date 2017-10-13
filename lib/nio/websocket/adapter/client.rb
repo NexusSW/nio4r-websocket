@@ -8,6 +8,7 @@ module NIO
           @url = url
           driver = ::WebSocket::Driver.client(self, options[:websocket_options] || {})
           super io, driver, options
+          WebSocket.logger.debug "Initiating handshake on #{io}"
           driver.start
         end
         attr_reader :url
