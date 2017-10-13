@@ -7,13 +7,14 @@ module NIO
         @driver = driver
         @buffer = ''
         @mutex = Mutex.new
+        @monitor = WebSocket.selector.register(inner, :rw)
 
         driver.on :close do |ev|
           WebSocket.logger.info "Driver initiated #{inner} close (code #{ev.code}): #{ev.reason}"
           close :driver
         end
         driver.on :error do |ev|
-          WebSocket.logger.info "Driver reports error on #{inner}: #{ev.reason}"
+          WebSocket.logger.info "Driver reports error on #{inner}: #{ev.message}"
           close :driver
         end
 
@@ -31,7 +32,6 @@ module NIO
       end
 
       def add_to_reactor
-        @monitor ||= WebSocket.selector.register(inner, :rw)
         monitor.value = proc do
           data = inner.read_nonblock(16384) if monitor.readable?
           WebSocket.logger.debug { "Incoming data on #{inner}:\n#{data}" } if data && WebSocket.log_traffic?
@@ -46,7 +46,7 @@ module NIO
           @buffer << data
         end
         monitor.interests = :rw
-        monitor.selector.wakeup
+        WebSocket.selector.wakeup
         pump_buffer
       end
 

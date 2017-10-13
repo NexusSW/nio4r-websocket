@@ -143,7 +143,6 @@ module NIO
 
     def self.ensure_reactor
       last_reactor_error_time = Time.now - 1
-      last_reactor_error_count = 0
       logger.debug 'Starting reactor' unless @reactor
       @reactor ||= Thread.start do
         Thread.current.abort_on_exception = true
@@ -154,13 +153,13 @@ module NIO
             sleep 0.1
           end
           loop do
-            selector.select do |monitor|
+            selector.select 1 do |monitor|
               begin
                 monitor.value.call # force proc usage - no other pattern support
               rescue => e
                 logger.error "Error occured in callback on socket #{monitor.io}.  No longer handling this connection."
                 logger.error e.message
-                e.backtrace.drop(1).map { |s| logger.error "\t#{s}" }
+                e.backtrace.map { |s| logger.error "\t#{s}" }
                 monitor.close # protect global loop from being crashed by a misbehaving driver, or a sloppy disconnect
               end
             end
@@ -168,13 +167,10 @@ module NIO
         rescue => e
           logger.fatal 'Error occured in reactor subsystem.  Trying again.'
           logger.fatal e.message
-          e.backtrace.drop(1).map { |s| logger.fatal "\t#{s}" }
-          last_reactor_error_count = 0 if last_reactor_error_time + 1 <= Time.now
+          e.backtrace.map { |s| logger.fatal "\t#{s}" }
+          raise if last_reactor_error_time + 1 > Time.now
           last_reactor_error_time = Time.now
-          last_reactor_error_count += 1
-          sleep 0.1
-          retry if last_reactor_error_count <= 5
-          raise
+          retry
         end
       end
     end
