@@ -19,6 +19,7 @@ module NIO
       io ||= open_socket(url, options)
       adapter = CLIENT_ADAPTER.new(url, io, options)
       yield(adapter.driver, adapter)
+      adapter.add_to_reactor
       logger.info "Client #{io} connected to #{url}"
       adapter.driver
     end
@@ -30,6 +31,7 @@ module NIO
         accept_socket server, options do |io| # this next block won't run until ssl (if enabled) has started
           adapter = SERVER_ADAPTER.new(io, options)
           yield(adapter.driver, adapter)
+          adapter.add_to_reactor
           logger.info "Host accepted client connection #{io} on port #{options[:port]}"
         end
       end
@@ -153,7 +155,7 @@ module NIO
             sleep 0.1
           end
           loop do
-            selector.select 1 do |monitor|
+            selector.select 0.1 do |monitor|
               begin
                 monitor.value.call # force proc usage - no other pattern support
               rescue => e
