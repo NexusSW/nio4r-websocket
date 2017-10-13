@@ -165,6 +165,7 @@ module NIO
                 monitor.close # protect global loop from being crashed by a misbehaving driver, or a sloppy disconnect
               end
             end
+            Thread.pass
           end
         rescue => e
           logger.fatal 'Error occured in reactor subsystem.  Trying again.'
