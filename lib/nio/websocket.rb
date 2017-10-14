@@ -148,7 +148,6 @@ module NIO
     end
 
     def self.ensure_reactor
-      last_reactor_error_time = Time.now - 1
       logger.debug 'Starting reactor' unless @reactor
       @reactor ||= Thread.start do
         Thread.current.abort_on_exception = true
@@ -168,12 +167,10 @@ module NIO
             Thread.pass # give other threads a chance at manipulating our selector (e.g. a new connection on the main thread trying to register)
           end
         rescue => e
-          logger.fatal 'Error occured in reactor subsystem.  Trying again.'
+          logger.fatal 'Error occured in reactor subsystem.'
           logger.fatal e.message
           e.backtrace.map { |s| logger.fatal "\t#{s}" }
-          raise if last_reactor_error_time + 1 > Time.now
-          last_reactor_error_time = Time.now
-          retry
+          raise
         end
       end
     end
