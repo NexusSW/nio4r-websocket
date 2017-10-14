@@ -18,7 +18,7 @@ module NIO
     def self.connect(url, options = {}, io = nil)
       io ||= open_socket(url, options)
       adapter = CLIENT_ADAPTER.new(url, io, options)
-      yield(adapter.driver, adapter)
+      yield(adapter.driver, adapter) if block_given?
       adapter.add_to_reactor
       logger.info "Client #{io} connected to #{url}"
       adapter.driver
@@ -30,7 +30,7 @@ module NIO
       connect_monitor.value = proc do
         accept_socket server, options do |io| # this next block won't run until ssl (if enabled) has started
           adapter = SERVER_ADAPTER.new(io, options)
-          yield(adapter.driver, adapter)
+          yield(adapter.driver, adapter) if block_given?
           adapter.add_to_reactor
           logger.info "Host accepted client connection #{io} on port #{options[:port]}"
         end
@@ -140,8 +140,10 @@ module NIO
     end
 
     def self.upgrade_to_ssl(io, options)
+      store = OpenSSL::X509::Store.new
+      store.set_default_paths
       ctx = OpenSSL::SSL::SSLContext.new
-      (options[:ssl_context] || {}).each do |k, v|
+      { cert_store: store, verify_mode: OpenSSL::SSL::VERIFY_PEER }.merge(options[:ssl_context] || {}).each do |k, v|
         ctx.send "#{k}=", v if ctx.respond_to? k
       end
       OpenSSL::SSL::SSLSocket.new(io, ctx)
