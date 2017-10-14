@@ -121,9 +121,7 @@ module NIO
         monitor = selector.register(io, :rw)
         monitor.value = proc do
           waiting = accept_nonblock io
-          if [:r, :w].include? waiting
-            monitor.interests = :rw # just because nio says it's not e.g. 'writable' doesn't mean we don't have something to read & vice versa & but what about spin cases?
-          else
+          unless [:r, :w].include? waiting
             monitor.close
             yield waiting
           end

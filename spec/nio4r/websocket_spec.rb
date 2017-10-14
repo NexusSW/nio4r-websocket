@@ -89,7 +89,8 @@ module WireUp
   end
 end
 
-NIO::WebSocket.log_traffic = true
+NIO::WebSocket.logger.level = Logger::DEBUG
+# NIO::WebSocket.log_traffic = true
 describe NIO::WebSocket do
   context 'ws://localhost:8080' do
     before :context do
