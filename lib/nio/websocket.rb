@@ -44,11 +44,7 @@ module NIO
     CLIENT_ADAPTER = NIO::WebSocket::Adapter::Client
 
     def self.logger
-      @logger ||= begin
-      logger = Logger.new(STDERR)
-      logger.level = Logger::ERROR
-      logger
-    end
+      @logger ||= Logger.new(STDERR, progname: 'WebSocket', level: Logger::ERROR)
     end
 
     def self.logger=(logger)
@@ -159,9 +155,10 @@ module NIO
             selector.select 0.1 do |monitor|
               begin
                 monitor.value.call if monitor.value.respond_to? :call # force proc usage - no other pattern support
+              rescue IO::WaitReadable, IO::WaitWritable # rubocop:disable Lint/HandleExceptions
               rescue => e
                 logger.error "Error occured in callback on socket #{monitor.io}.  No longer handling this connection."
-                logger.error e.message
+                logger.error "#{e.class}: #{e.message}"
                 e.backtrace.map { |s| logger.error "\t#{s}" }
                 monitor.close # protect global loop from being crashed by a misbehaving driver, or a sloppy disconnect
               end
@@ -170,7 +167,7 @@ module NIO
           end
         rescue => e
           logger.fatal 'Error occured in reactor subsystem.'
-          logger.fatal e.message
+          logger.fatal "#{e.class}: #{e.message}"
           e.backtrace.map { |s| logger.fatal "\t#{s}" }
           raise
         end

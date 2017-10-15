@@ -13,7 +13,7 @@ module NIO
           close :driver
         end
         driver.on :error do |ev|
-          WebSocket.logger.info "Driver reports error on #{inner}: #{ev.message}"
+          WebSocket.logger.error "Driver reports error on #{inner}: #{ev.message}"
           close :driver
         end
       end
@@ -31,10 +31,14 @@ module NIO
       def add_to_reactor
         @monitor = WebSocket.selector.register(inner, :rw) # This can block if this is the main thread and the reactor is busy
         monitor.value = proc do
-          data = inner.read_nonblock(16384) if monitor.readable?
-          WebSocket.logger.debug { "Incoming data on #{inner}:\n#{data}" } if data && WebSocket.log_traffic?
-          driver.parse data if data
-          pump_buffer if monitor.writable?
+          begin
+            data = inner.read_nonblock(16384) if monitor.readable?
+            WebSocket.logger.debug { "Incoming data on #{inner}:\n#{data}" } if data && WebSocket.log_traffic?
+            driver.parse data if data
+            pump_buffer if monitor.writable?
+          rescue Errno::ECONNRESET
+            close :reactor
+          end
         end
         WebSocket.ensure_reactor
       end
@@ -55,7 +59,7 @@ module NIO
           begin
             written = inner.write_nonblock @buffer unless @buffer.empty?
             WebSocket.logger.debug { "Pumped #{written} bytes of data from buffer to #{inner}:\n#{@buffer}" } unless @buffer.empty? || !WebSocket.log_traffic?
-            @buffer.slice!(0, written) if written > 0
+            @buffer = @buffer.byteslice(written..-1) if written > 0
             WebSocket.logger.debug { "The buffer is now:\n#{@buffer}" } unless @buffer.empty? || !WebSocket.log_traffic?
           rescue IO::WaitWritable
             return written
