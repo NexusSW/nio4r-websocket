@@ -1,6 +1,6 @@
 # NIO::Websocket [![Build Status](https://travis-ci.org/NexusSW/nio4r-websocket.svg?branch=master)](https://travis-ci.org/NexusSW/nio4r-websocket) [![Dependency Status](https://gemnasium.com/badges/github.com/NexusSW/nio4r-websocket.svg)](https://gemnasium.com/github.com/NexusSW/nio4r-websocket)
 
-[![Maintainability](https://api.codeclimate.com/v1/badges/cce01221d575804b09f5/maintainability)](https://codeclimate.com/github/NexusSW/nio4r-websocket/maintainability) [![Test Coverage](https://api.codeclimate.com/v1/badges/cce01221d575804b09f5/test_coverage)](https://codeclimate.com/github/NexusSW/nio4r-websocket/test_coverage)
+[![Maintainability](https://api.codeclimate.com/v1/badges/cce01221d575804b09f5/maintainability)](https://codeclimate.com/github/NexusSW/nio4r-websocket/maintainability) [![Test Coverage](https://api.codeclimate.com/v1/badges/cce01221d575804b09f5/test_coverage)](https://codeclimate.com/github/NexusSW/nio4r-websocket/test_coverage) [![Gem Version](https://badge.fury.io/rb/nio4r-websocket.svg)](https://badge.fury.io/rb/nio4r-websocket)
 
 This gem ties websocket-driver, a transport agnostic WebSockets library, together with a nio4r driven socket implementation.
 
@@ -21,6 +21,8 @@ Or install it yourself as:
     gem install nio4r-websocket
 
 ## Usage
+
+[YARD Documentation](http://www.rubydoc.info/gems/nio4r-websocket/)
 
 The only usage patterns introduced by this module are in how to instantiate 'websocket-driver' objects.  Please refer to their documentation at <https://github.com/faye/websocket-driver-ruby#driver-api> on how to use them.
 
@@ -49,6 +51,8 @@ NIO::WebSocket.listen port:443, ssl_context: { key: openssl_pkey_rsa_obj, cert: 
   ... other wireup code (refer to 'websocket-driver' documentation)
 end
 ```
+
+> Note: The above server block (`listen`) is executed on a per-connection basis
 
 ### Options
 
