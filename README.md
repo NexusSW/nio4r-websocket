@@ -14,17 +14,19 @@ gem 'nio4r-websocket'
 
 And then execute:
 
-    $ bundle
+    bundle
 
 Or install it yourself as:
 
-    $ gem install nio4r-websocket
+    gem install nio4r-websocket
 
 ## Usage
 
-`require 'nio/websocket'`
+The only usage patterns introduced by this module are in how to instantiate 'websocket-driver' objects.  Please refer to their documentation at <https://github.com/faye/websocket-driver-ruby#driver-api> on how to use them.
 
-### Examples:
+### Examples
+
+`require 'nio/websocket'`
 
 Client:
 
@@ -62,7 +64,7 @@ To install this gem onto your local machine, run `bundle exec rake install`.
 
 ## Contributing
 
-Bug reports and pull requests are welcome on GitHub at https://github.com/NexusSW/nio4r-websocket.  Ensure that you sign off on all of your commits.
+Bug reports and pull requests are welcome on GitHub at <https://github.com/NexusSW/nio4r-websocket>.  Ensure that you sign off on all of your commits.
 
 ## License
 
