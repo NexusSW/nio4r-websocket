@@ -59,7 +59,7 @@ module NIO
       # @param server [TCPServer] (DI) TCPServer-like object to use in lieu of starting a new server
       # @option options [Integer] :port required: Port on which to listen for incoming connections
       # @option options [String] :address optional: Specific Address on which to bind the TCPServer
-      # @option options [Hash] :websocket_options Hash to pass to the ::WebSocket::Driver.client
+      # @option options [Hash] :websocket_options Hash to pass to the ::WebSocket::Driver.server
       # @option options [Hash] :ssl_context Hash from which to create the OpenSSL::SSL::SSLContext object
       # @yield [::WebSocket::Driver]
       # @return server, as passed in, or a new TCPServer if no server was specified
