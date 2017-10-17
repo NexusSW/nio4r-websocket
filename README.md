@@ -1,4 +1,4 @@
-# NIO::Websocket [![Build Status](https://travis-ci.org/NexusSW/nio4r-websocket.svg?branch=master)](https://travis-ci.org/NexusSW/nio4r-websocket) [![Dependency Status](https://gemnasium.com/badges/github.com/NexusSW/nio4r-websocket.svg)](https://gemnasium.com/github.com/NexusSW/nio4r-websocket)
+# NIO::WebSocket [![Build Status](https://travis-ci.org/NexusSW/nio4r-websocket.svg?branch=master)](https://travis-ci.org/NexusSW/nio4r-websocket) [![Dependency Status](https://gemnasium.com/badges/github.com/NexusSW/nio4r-websocket.svg)](https://gemnasium.com/github.com/NexusSW/nio4r-websocket)
 
 [![Maintainability](https://api.codeclimate.com/v1/badges/cce01221d575804b09f5/maintainability)](https://codeclimate.com/github/NexusSW/nio4r-websocket/maintainability) [![Test Coverage](https://api.codeclimate.com/v1/badges/cce01221d575804b09f5/test_coverage)](https://codeclimate.com/github/NexusSW/nio4r-websocket/test_coverage) [![Gem Version](https://badge.fury.io/rb/nio4r-websocket.svg)](https://badge.fury.io/rb/nio4r-websocket)
 

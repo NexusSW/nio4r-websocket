@@ -16,7 +16,11 @@ module NIO
       # Returns the current logger, or creates one at level ERROR if one has not been assigned
       # @return [Logger] the current logger instance
       def logger
-        @logger ||= Logger.new(STDERR, progname: 'WebSocket', level: Logger::ERROR)
+        @logger ||= begin
+        logger = Logger.new(STDERR, progname: 'WebSocket', level: Logger::ERROR)
+        logger.level = Logger::ERROR
+        logger
+      end
       end
 
       attr_writer :logger
