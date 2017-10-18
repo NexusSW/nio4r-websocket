@@ -1,20 +1,28 @@
 sudo: false
 language: ruby
 rvm:
-  - 2.1.0 # target version (requires old nio4r 1.2.x)
-  - 2.2.2 # Minimum for latest nio4r
-  - 2.3.1 # Default Xenial install
-  - ruby-head
+- 2.1.0
+- 2.2.2
+- 2.3.1
+- ruby-head
 matrix:
   allow_failures:
-    - rvm: ruby-head
+  - rvm: ruby-head
 before_script:
-  - curl -L https://codeclimate.com/downloads/test-reporter/test-reporter-latest-linux-amd64 > ./cc-test-reporter
-  - chmod +x ./cc-test-reporter
-  - ./cc-test-reporter before-build
-  - ip a
-  - cat /etc/hosts
+- curl -L https://codeclimate.com/downloads/test-reporter/test-reporter-latest-linux-amd64
+  > ./cc-test-reporter
+- chmod +x ./cc-test-reporter
+- "./cc-test-reporter before-build"
+- ip a
+- cat /etc/hosts
 after_script:
-  - cat Gemfile.lock
-  - ./cc-test-reporter after-build --exit-code $TRAVIS_TEST_RESULT
-  
+- cat Gemfile.lock
+- "./cc-test-reporter after-build --exit-code $TRAVIS_TEST_RESULT"
+deploy:
+  provider: rubygems
+  api_key:
+    secure: TcdJ+iGasCJJFqG9BqWBwsZrKKMTbvWJ+CNMeSYLLCuFOSW74m/A0DBkVddgaADlY1EYIkNkAAaFEaPgQsPunsll8wvAwbddXX5LOsrUaIk3gaYk3V8sudnn437HGsFIvMVQ8yg8fc25p2MMz/pCVPyb1JcMfRBHVDB4I39LUHthi24aGJJn2EZPgiarXYFbsiO/aMId22/Yxw32gG3+ULd2GAhxQ55zZzxfTzvwRian3U9kY4uO79a3rjKH9beSGXYfH3hecp0NEt65vEjwUnfohx7M4We9SHYLm3bEpPtLjUrI2eaaMbeY9bp3UkwVetsL3Ms4METU49sVbYwDrjt+H5s7GvSKdZt/ybmgJWu/Z7llUVrZzJLXRIpMTEGOYh2l+pgzOon+0fmKkcjSbveM6BCiQbMkt+kHHEGlm01VrZPlBeuhnl0ORAxTvAb9PZjs5/myrMrd7C+MAFp9xT+kJ3BodnhV8oPP8imHLqZiu3eAQBk6YtjEOJ3VPlk4VZzL2risXWdKpOeTXU/5WAJJLJmUWNFtfWDsd+EkxprTpNHzymNGUxR2m3OVdqlEwUELCggrkaSNVrYgBFVkrPz0Th23ALsd5YbN16p5eRVbozJP35SxHWQzmCj8Ye7vRgeIN9AyT6FSmuNTbJuPFFGPQaFDmpFkH/CreOXJFNU=
+  gem: nio4r-websocket
+  on:
+    tags: true
+    repo: NexusSW/nio4r-websocket
