@@ -9,8 +9,7 @@ matrix:
   allow_failures:
   - rvm: ruby-head
 before_script:
-- curl -L https://codeclimate.com/downloads/test-reporter/test-reporter-latest-linux-amd64
-  > ./cc-test-reporter
+- curl -L https://codeclimate.com/downloads/test-reporter/test-reporter-latest-linux-amd64 > ./cc-test-reporter
 - chmod +x ./cc-test-reporter
 - "./cc-test-reporter before-build"
 - ip a
@@ -25,4 +24,4 @@ deploy:
   gem: nio4r-websocket
   on:
     tags: true
-    repo: NexusSW/nio4r-websocket
+    rvm: 2.3.1
