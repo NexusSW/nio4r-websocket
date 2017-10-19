@@ -69,6 +69,7 @@ module NIO
       # @return server, as passed in, or a new TCPServer if no server was specified
       def listen(options = {}, server = nil)
         server ||= create_server(options)
+        selector.wakeup
         connect_monitor = selector.register(server, :r)
         connect_monitor.value = proc do
           accept_socket server, options do |io| # this next block won't run until ssl (if enabled) has started
@@ -139,6 +140,7 @@ module NIO
       def try_accept_nonblock(io)
         waiting = accept_nonblock io
         if [:r, :w].include? waiting
+          selector.wakeup
           monitor = selector.register(io, :rw)
           monitor.value = proc do
             waiting = accept_nonblock io

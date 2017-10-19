@@ -29,12 +29,15 @@ module NIO
       end
 
       def add_to_reactor
+        WebSocket.selector.wakeup
         @monitor = WebSocket.selector.register(inner, :rw) # This can block if this is the main thread and the reactor is busy
         monitor.value = proc do
           begin
             data = inner.read_nonblock(16384) if monitor.readable?
-            WebSocket.logger.debug { "Incoming data on #{inner}:\n#{data}" } if data && WebSocket.log_traffic?
-            driver.parse data if data
+            if data
+              WebSocket.logger.debug { "Incoming data on #{inner}:\n#{data}" } if WebSocket.log_traffic?
+              driver.parse data
+            end
             pump_buffer if monitor.writable?
           rescue Errno::ECONNRESET
             close :reactor
