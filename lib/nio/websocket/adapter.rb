@@ -21,9 +21,13 @@ module NIO
 
       def close(from = nil)
         driver.close unless from == :driver
+        loop do
+          break if @buffer.empty?
+          Thread.pass
+        end
         @driver = nil # circular reference
-        monitor.close
         WebSocket.selector.wakeup
+        monitor.close
         inner.close
         WebSocket.logger.info "#{inner} closed"
       end
@@ -33,17 +37,22 @@ module NIO
         @monitor = WebSocket.selector.register(inner, :rw) # This can block if this is the main thread and the reactor is busy
         monitor.value = proc do
           begin
-            data = inner.read_nonblock(16384) if monitor.readable?
-            if data
-              WebSocket.logger.debug { "Incoming data on #{inner}:\n#{data}" } if WebSocket.log_traffic?
-              driver.parse data
-            end
+            read if monitor.readable?
             pump_buffer if monitor.writable?
           rescue Errno::ECONNRESET
             close :reactor
           end
         end
         WebSocket.ensure_reactor
+      end
+
+      def read
+        data = inner.read_nonblock(16384)
+        if data
+          WebSocket.logger.debug { "Incoming data on #{inner}:\n#{data}" } if WebSocket.log_traffic?
+          driver.parse data
+        end
+        data
       end
 
       def write(data)
