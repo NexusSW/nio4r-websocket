@@ -23,7 +23,7 @@ module NIO
         driver.close unless from == :driver
         loop do
           break if @buffer.empty?
-          Thread.pass
+          pump_buffer
         end
         @driver = nil # circular reference
         WebSocket.selector.wakeup
