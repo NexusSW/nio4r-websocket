@@ -52,6 +52,10 @@ shared_examples 'Core Tests' do
       sleep 1
       expect(ponged).to eq true
     end
+    it 'can initiate a close' do
+      expect { host.close }.not_to raise_error
+      sleep 5
+    end
   end
   after :context do
     NIO::WebSocket.reset
