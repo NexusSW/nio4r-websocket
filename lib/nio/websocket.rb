@@ -193,7 +193,6 @@ module NIO
               selector.select 0.1 do |monitor|
                 begin
                   monitor.value.call if monitor.value.respond_to? :call # force proc usage - no other pattern support
-                rescue IO::WaitReadable, IO::WaitWritable # rubocop:disable Lint/HandleExceptions
                 rescue => e
                   logger.error "Error occured in callback on socket #{monitor.io}.  No longer handling this connection."
                   logger.error "#{e.class}: #{e.message}"
