@@ -39,7 +39,7 @@ module NIO
           begin
             read if monitor.readable?
             pump_buffer if monitor.writable?
-          rescue Errno::ECONNRESET
+          rescue Errno::ECONNRESET, EOFError
             close :reactor
           end
         end
