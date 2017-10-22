@@ -27,20 +27,9 @@ module NIO
 
       def close(from = nil)
         return false if @closing
-        @closing = true
 
-        main_pump = monitor.value
-        monitor.value = proc do
-          main_pump.call if main_pump.respond_to? :call
-          if !monitor.readable? && @buffer.empty?
-            teardown
-            WebSocket.logger.info "#{inner} closed"
-          else
-            monitor.interests = :rw unless monitor.closed? # keep the :w interest so that our block runs each time
-            # edge case: if monitor was readable this time, and the write buffer is empty, if we emptied the read buffer this time our block wouldn't run again
-          end
-        end
         driver.close if from.nil?
+        @closing = true
         monitor.interests = :rw
         WebSocket.selector.wakeup
         true
@@ -54,15 +43,22 @@ module NIO
             read if monitor.readable?
             pump_buffer if monitor.writable?
           rescue Errno::ECONNRESET, EOFError
-            unless close :reactor
-              driver.force_state :closed
-              driver.emit :io_error
-              teardown
-              WebSocket.logger.info "#{inner} socket closed"
-            end
+            driver.force_state :closed
+            driver.emit :io_error
+            teardown
+            WebSocket.logger.info "#{inner} socket closed"
           rescue IO::WaitReadable # rubocop:disable Lint/HandleExceptions
           rescue IO::WaitWritable
             monitor.interests = :rw
+          end
+          if @closing
+            if !monitor.readable? && @buffer.empty?
+              teardown
+              WebSocket.logger.info "#{inner} closed"
+            else
+              monitor.interests = :rw unless monitor.closed? # keep the :w interest so that our block runs each time
+              # edge case: if monitor was readable this time, and the write buffer is empty, if we emptied the read buffer this time our block wouldn't run again
+            end
           end
         end
         WebSocket.ensure_reactor
