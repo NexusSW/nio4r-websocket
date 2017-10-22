@@ -5,14 +5,13 @@ require 'socket'
 require 'uri'
 require 'openssl'
 require 'logger'
+require 'nio/websocket/reactor'
 require 'nio/websocket/adapter/client'
 require 'nio/websocket/adapter/server'
 
 module NIO
   module WebSocket
     class << self
-      # @!group Class Attributes
-
       # Returns the current logger, or creates one at level ERROR if one has not been assigned
       # @return [Logger] the current logger instance
       def logger
@@ -38,8 +37,6 @@ module NIO
         @log_traffic
       end
 
-      # @!group API
-
       # Create and return a websocket client that communicates either over the given IO object (upgrades the connection),
       # or we'll create a new connection to url if io is not supplied
       # @param [String] url ws:// or wss:// location to connect
@@ -53,7 +50,10 @@ module NIO
         io ||= open_socket(url, options)
         adapter = CLIENT_ADAPTER.new(url, io, options)
         yield(adapter.driver, adapter) if block_given?
-        adapter.add_to_reactor
+        Reactor.queue_task do
+          adapter.add_to_reactor
+        end
+        Reactor.start
         logger.info "Client #{io} connected to #{url}"
         adapter.driver
       end
@@ -69,17 +69,20 @@ module NIO
       # @return server, as passed in, or a new TCPServer if no server was specified
       def listen(options = {}, server = nil)
         server ||= create_server(options)
-        selector.wakeup
-        connect_monitor = selector.register(server, :r)
-        connect_monitor.value = proc do
-          accept_socket server, options do |io| # this next block won't run until ssl (if enabled) has started
-            adapter = SERVER_ADAPTER.new(io, options)
-            yield(adapter.driver, adapter) if block_given?
-            adapter.add_to_reactor
-            logger.info "Host accepted client connection #{io} on port #{options[:port]}"
+        Reactor.queue_task do
+          monitor = Reactor.selector.register(server, :r)
+          monitor.value = proc do
+            accept_socket server, options do |io| # this next block won't run until ssl (if enabled) has started
+              adapter = SERVER_ADAPTER.new(io, options)
+              yield(adapter.driver, adapter) if block_given?
+              Reactor.queue_task do
+                adapter.add_to_reactor
+              end
+              logger.info "Host accepted client connection #{io} on port #{options[:port]}"
+            end
           end
         end
-        ensure_reactor
+        Reactor.start
         logger.info 'Host listening for new connections on port ' + options[:port].to_s
         server
       end
@@ -90,10 +93,7 @@ module NIO
       # Resets this API to a fresh state
       def reset
         logger.info 'Resetting reactor subsystem'
-        @selector = nil
-        return unless @reactor
-        @reactor.exit
-        @reactor = nil
+        Reactor.reset
       end
 
       # @!endgroup
@@ -129,7 +129,7 @@ module NIO
           logger.debug "Upgrading Connection #{waiting} to ssl"
           ssl = upgrade_to_ssl(waiting, options)
           try_accept_nonblock ssl do
-            logger.info "Connection #{waiting} upgraded to #{ssl}"
+            logger.info "Incoming connection #{waiting} upgraded to #{ssl}"
             yield ssl
           end
         else
@@ -140,13 +140,15 @@ module NIO
       def try_accept_nonblock(io)
         waiting = accept_nonblock io
         if [:r, :w].include? waiting
-          selector.wakeup
-          monitor = selector.register(io, :rw)
-          monitor.value = proc do
-            waiting = accept_nonblock io
-            unless [:r, :w].include? waiting
-              monitor.close
-              yield waiting
+          # Only happens on server side ssl negotiation
+          Reactor.queue_task do
+            monitor = Reactor.selector.register(io, :rw)
+            monitor.value = proc do
+              waiting = accept_nonblock io
+              unless [:r, :w].include? waiting
+                monitor.close
+                yield waiting
+              end
             end
           end
         else
@@ -170,45 +172,6 @@ module NIO
           ctx.send "#{k}=", v if ctx.respond_to? k
         end
         OpenSSL::SSL::SSLSocket.new(io, ctx)
-      end
-
-      public
-
-      # @!group Internal
-
-      # @api private
-      # @return [NIO::Selector]
-      def selector
-        @selector ||= NIO::Selector.new
-      end
-
-      # @api private
-      def ensure_reactor
-        logger.debug 'Starting reactor' unless @reactor
-        @reactor ||= Thread.start do
-          Thread.current.abort_on_exception = true
-          logger.info 'Reactor started'
-          begin
-            loop do
-              selector.select 0.1 do |monitor|
-                begin
-                  monitor.value.call if monitor.value.respond_to? :call # force proc usage - no other pattern support
-                rescue => e
-                  logger.error "Error occured in callback on socket #{monitor.io}.  No longer handling this connection."
-                  logger.error "#{e.class}: #{e.message}"
-                  e.backtrace.map { |s| logger.error "\t#{s}" }
-                  monitor.close # protect global loop from being crashed by a misbehaving driver, or a sloppy disconnect
-                end
-              end
-              Thread.pass # give other threads a chance at manipulating our selector (e.g. a new connection on the main thread trying to register)
-            end
-          rescue => e
-            logger.fatal 'Error occured in reactor subsystem.'
-            logger.fatal "#{e.class}: #{e.message}"
-            e.backtrace.map { |s| logger.fatal "\t#{s}" }
-            raise
-          end
-        end
       end
     end
   end

@@ -31,13 +31,12 @@ module NIO
         driver.close if from.nil?
         @closing = true
         monitor.interests = :rw
-        WebSocket.selector.wakeup
+        Reactor.selector.wakeup
         true
       end
 
       def add_to_reactor
-        WebSocket.selector.wakeup
-        @monitor = WebSocket.selector.register(inner, :rw) # This can block if this is the main thread and the reactor is busy
+        @monitor = Reactor.selector.register(inner, :rw) # This can block if this is the main thread and the reactor is busy
         monitor.value = proc do
           begin
             read if monitor.readable?
@@ -61,7 +60,6 @@ module NIO
             end
           end
         end
-        WebSocket.ensure_reactor
       end
 
       def read
@@ -79,7 +77,7 @@ module NIO
         end
         return unless monitor
         pump_buffer
-        WebSocket.selector.wakeup unless monitor.interests == :r
+        Reactor.selector.wakeup unless monitor.interests == :r
       end
 
       def pump_buffer
