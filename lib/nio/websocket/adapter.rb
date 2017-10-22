@@ -55,6 +55,8 @@ module NIO
             pump_buffer if monitor.writable?
           rescue Errno::ECONNRESET, EOFError
             unless close :reactor
+              driver.force_state :closed
+              driver.emit :io_error
               teardown
               WebSocket.logger.info "#{inner} socket closed"
             end
@@ -102,5 +104,11 @@ module NIO
         end
       end
     end
+  end
+end
+
+class ::WebSocket::Driver
+  def force_state(newstate)
+    @ready_state = STATES.index newstate
   end
 end

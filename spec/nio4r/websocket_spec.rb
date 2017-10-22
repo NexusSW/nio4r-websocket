@@ -54,7 +54,9 @@ shared_examples 'Core Tests' do
     end
     it 'can initiate a close' do
       expect { host.close }.not_to raise_error
-      sleep 5
+      sleep 1
+      expect(host.state).to eq(:closed)
+      expect(client.state).to eq(:closed)
     end
   end
   after :context do

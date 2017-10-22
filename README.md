@@ -26,6 +26,15 @@ Or install it yourself as:
 
 The only usage patterns introduced by this module are in how to instantiate 'websocket-driver' objects.  Please refer to their documentation at <https://github.com/faye/websocket-driver-ruby#driver-api> on how to use them.
 
+Additionally, the WebSocket driver object will emit an `:io_error` event.  In the case that the underlying IO object gets disconnected, or otherwise closed without completing the `WebSocket::Driver#close` mechanism, you will be notified via subscribing to `:io_error` like:
+
+```ruby
+driver.on :io_error do
+  # some cleanup logic
+  # `driver.on :close` may or may not be called - likely not
+end
+```
+
 ### Examples
 
 `require 'nio/websocket'`
