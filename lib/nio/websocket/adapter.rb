@@ -78,9 +78,8 @@ module NIO
           @buffer << data
         end
         return unless monitor
-        monitor.interests = :rw
-        WebSocket.selector.wakeup
         pump_buffer
+        WebSocket.selector.wakeup unless monitor.interests == :r
       end
 
       def pump_buffer
@@ -91,7 +90,7 @@ module NIO
             WebSocket.logger.debug { "Pumped #{written} bytes of data from buffer to #{inner}:\n#{@buffer}" } unless @buffer.empty? || !WebSocket.log_traffic?
             @buffer = @buffer.byteslice(written..-1) if written > 0
             WebSocket.logger.debug { "The buffer is now:\n#{@buffer}" } unless @buffer.empty? || !WebSocket.log_traffic?
-          rescue IO::WaitWritable
+          rescue IO::WaitWritable, IO::WaitReadable
             return written
           ensure
             monitor.interests = @buffer.empty? ? :r : :rw
