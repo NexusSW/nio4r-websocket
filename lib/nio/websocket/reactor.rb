@@ -42,7 +42,7 @@ module NIO
 
                 selector.select 1 do |monitor|
                   begin
-                    monitor.value.call if monitor.value.respond_to? :call
+                    monitor.value.call(monitor) if monitor.value.respond_to? :call
                   rescue => e
                     WebSocket.logger.error "Error occured in callback on socket #{monitor.io}.  No longer handling this connection."
                     WebSocket.logger.error "#{e.class}: #{e.message}"
