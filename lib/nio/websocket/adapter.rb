@@ -41,7 +41,7 @@ module NIO
           begin
             read if monitor.readable?
             pump_buffer if monitor.writable?
-          rescue Errno::ECONNRESET, EOFError
+          rescue Errno::ECONNRESET, EOFError, Errno::ECONNABORTED
             driver.force_state :closed
             driver.emit :io_error
             teardown
