@@ -2,8 +2,8 @@ sudo: false
 language: ruby
 rvm:
 - 2.1.0
-- 2.2.2
-- 2.3.1
+- 2.4.3
+- 2.5.0
 - ruby-head
 matrix:
   allow_failures:
@@ -25,7 +25,7 @@ deploy:
   gem: nio4r-websocket
   on:
     tags: true
-    rvm: 2.3.1
+    rvm: 2.4.3
 notifications:
   slack:
     secure: lV6b8Gh1E4XLWdEMdfa9PB+eZvLJwaAH8GC3+wdv6fYCWGBgEKX6kF8swYmzIj+vwPpXMKWnOX2l90l1Sn4jcljfG9gaFp5To8sBYxCieSg5Y8DoRHfohL1YU0It1kJN83LPTjGsp1sNkylHH8s222jdMF1Jekq6MkqxHH+EFGIw0Q+KQB8Vi6K6tDGkR30v2luew/1klVRWGD28dDVrA7E6oejHuUU0YWj/XhIJNORhvRGDPL5q9dkq2W4QJuLOls4arU7W6koLGtOgKMK1/x9RS62NdBxdNvRWGyGg3v2ErlWtTJWEbED6q8WRYXO4TN7PrZgVhY/kcPiGwzwKDGk2Hej9UvWTeW1HjN5yVFeU7D6fH3WC+Ys6gwp1yBkf90xWYpH7YQ4UaodSRdPjXU7WFnfmaFlnlkvvO13igRJa+1cRM7hdtrN7d3/3CDJdnE+YOqa1oSF+3gLcCu837Zgn2dc5colDRbnyVlDbjVVIkPFNxwZ9/ixg97m5VwVd8+PvqaFvIuNpPu9tflxguyAzYN5uhlLOu5pW8syWDE1fpzVLZ33LsWGAhZ/X3Ups+KxsPC46sqdIV54ikW7V5kpEjFlutfed1aWYxkdjMz90HCcQSEQ3YrJOluOyFa28px2lnA0Bdp2eVLkPDGn2W+9U6d1K/zGpgejb6aiADBY=

@@ -21,7 +21,7 @@ Gem::Specification.new do |spec|
   spec.require_paths = ['lib']
 
   spec.add_dependency 'nio4r', '>= 1.2.1', '< 3.0' # Allow older nio4r, if possible, so as to not lock our ruby version to 2.2.2
-  spec.add_dependency 'websocket-driver', '~> 0.7'
+  spec.add_dependency 'websocket-driver', '~> 0.6'
 
   spec.add_development_dependency 'bundler'
   spec.add_development_dependency 'rake'
