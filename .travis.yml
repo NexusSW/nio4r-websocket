@@ -1,14 +1,11 @@
 language: ruby
 rvm:
-- 2.1.0
 - 2.4.3
 - 2.5.1
 - ruby-head
 matrix:
   allow_failures:
   - rvm: ruby-head
-before_install:
-- gem install bundle
 before_script:
 - curl -L https://codeclimate.com/downloads/test-reporter/test-reporter-latest-linux-amd64
   > ./cc-test-reporter
