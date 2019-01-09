@@ -83,6 +83,10 @@ module WireUp
     @host
   end
 
+  def self.add_proxy(remote, options)
+    @proxy = NIO::WebSocket.proxy remote, options
+  end
+
   def self.add_client(client_driver)
     client_driver.on :message do |msg|
       @client.test_onmessage msg.data
@@ -104,6 +108,18 @@ describe NIO::WebSocket do
         WireUp.add_host host
       end
       NIO::WebSocket.connect "ws://localhost:8080" do |client|
+        WireUp.add_client client
+      end
+    end
+    include_examples "Core Tests"
+  end
+  context "ws://localhost:8081 via proxy" do
+    before :context do
+      NIO::WebSocket.listen port: 8081 do |host|
+        WireUp.add_host host
+      end
+      WireUp.add_proxy "localhost:8081", port: 8088
+      NIO::WebSocket.connect "ws://localhost:8088" do |client|
         WireUp.add_client client
       end
     end

@@ -8,6 +8,7 @@ require "logger"
 require "nio/websocket/reactor"
 require "nio/websocket/adapter/client"
 require "nio/websocket/adapter/server"
+require "nio/websocket/adapter/proxy"
 
 module NIO
   module WebSocket
@@ -57,6 +58,36 @@ module NIO
         adapter.driver
       end
 
+      # Establish a proxy host listening on the given port and address, that marshalls all data to/from a new connection on remote
+      # @param [Hash] options
+      # @param remote [String] remote server in "hostname_or_ip:port" format
+      # @option options [Integer] :port required: Port on which to listen for incoming connections
+      # @option options [String] :address optional: Specific Address on which to bind the TCPServer
+      # @option options [Hash] :ssl_context Hash from which to create the OpenSSL::SSL::SSLContext object
+      # @yield [::WebSocket::Driver]
+      # @return server, as passed in, or a new TCPServer if no server was specified
+      def proxy(remote, options = {})
+        server = create_server(options)
+        host, port, extra = remote.split(":", 3)
+        raise "Specify the remote parameter in 'hostname_or_ip:port' format" if extra || port.to_i == 0 || host.empty?
+        Reactor.queue_task do
+          monitor = Reactor.selector.register(server, :r)
+          monitor.value = proc do
+            accept_socket server, options do |client|
+              srv = open_socket "tcp://#{remote}", options
+              adapter = PROXY_ADAPTER.new(srv, client, options)
+              Reactor.queue_task do
+                adapter.add_to_reactor
+              end
+              logger.info "Proxy connection established between #{srv} and #{client}"
+            end
+          end
+        end
+        logger.info "Proxy Host listening for new connections on port " + options[:port].to_s
+        Reactor.start
+        server
+      end
+
       # Start handling new connections, passing each through the supplied block
       # @param [Hash] options
       # @param server [TCPServer] (DI) TCPServer-like object to use in lieu of starting a new server
@@ -88,6 +119,7 @@ module NIO
 
       SERVER_ADAPTER = NIO::WebSocket::Adapter::Server
       CLIENT_ADAPTER = NIO::WebSocket::Adapter::Client
+      PROXY_ADAPTER = NIO::WebSocket::Adapter::Proxy
 
       # Resets this API to a fresh state
       def reset
