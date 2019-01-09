@@ -1,4 +1,4 @@
-require 'nio/websocket/raw_adapter'
+require "nio/websocket/raw_adapter"
 
 module NIO
   module WebSocket
@@ -20,6 +20,8 @@ module NIO
       attr_reader :driver
 
       def teardown
+        driver.force_state :closed
+        driver.emit :io_error
         @driver = nil # circular reference
         super
       end
@@ -27,13 +29,6 @@ module NIO
       def close(from = nil)
         driver.close if from.nil? && !closing
         super()
-      end
-
-      def add_to_reactor
-        super do
-          driver.force_state :closed
-          driver.emit :io_error
-        end
       end
 
       def read

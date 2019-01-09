@@ -23,14 +23,13 @@ module NIO
         true
       end
 
-      def add_to_reactor(&errorblock)
+      def add_to_reactor
         @monitor = Reactor.selector.register(inner, :rw) # This can block if this is the main thread and the reactor is busy
         monitor.value = proc do
           begin
             read if monitor.readable?
             pump_buffer if monitor.writable?
           rescue Errno::ECONNRESET, EOFError, Errno::ECONNABORTED
-            yield if block_given?
             teardown
             WebSocket.logger.info "#{inner} socket closed"
           rescue IO::WaitReadable # rubocop:disable Lint/HandleExceptions

@@ -1,17 +1,37 @@
-require "nio/websocket/adapter"
+require "nio/websocket/raw_adapter"
 
 module NIO
   module WebSocket
     class Adapter
-      class Proxy < Adapter
-        def initialize(url, io, options)
-          @url = url
-          driver = ::WebSocket::Driver.client(self, options[:websocket_options] || {})
-          super io, driver, options
-          WebSocket.logger.debug "Initiating handshake on #{io}"
-          driver.start
+      class Proxy
+        def initialize(srv, client, options)
+          @srv_adapter = ProxyAdapter.new srv, options do |data|
+            client_adapter.write data
+          end
+          @client_adapter = ProxyAdapter.new client, options do |data|
+            srv_adapter.write data
+          end
+          WebSocket.logger.debug "Initiating proxy connection between #{srv} and #{client}"
         end
-        attr_reader :url
+        attr_reader :srv_adapter, :client_adapter
+
+        def add_to_reactor
+          srv_adapter.add_to_reactor
+          client_adapter.add_to_reactor
+        end
+      end
+
+      class ProxyAdapter < RawAdapter
+        def initialize(io, options, &block)
+          super io, options
+          @read_event = block
+        end
+
+        def read
+          super do |data|
+            @read_event.call data
+          end
+        end
       end
     end
   end
