@@ -1,9 +1,9 @@
-Vagrant.configure('2') do |config|
-  config.vm.box = 'ubuntu/trusty64'
-  config.vm.provider 'virtualbox' do |vb|
-    vb.memory = '512'
+Vagrant.configure("2") do |config|
+  config.vm.box = "ubuntu/trusty64"
+  config.vm.provider "virtualbox" do |vb|
+    vb.memory = "512"
   end
-  config.vm.provision 'chef_apply' do |chef|
+  config.vm.provision "chef_apply" do |chef|
     chef.recipe = <<-RECIPE
       apt_update 'update' do
         action :nothing

@@ -5,7 +5,7 @@ module NIO
         @inner = io
         @options = options
         @driver = driver
-        @buffer = ''
+        @buffer = ""
         @mutex = Mutex.new
 
         driver.on :close do |ev|

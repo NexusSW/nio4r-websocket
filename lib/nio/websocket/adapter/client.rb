@@ -1,4 +1,4 @@
-require 'nio/websocket/adapter'
+require "nio/websocket/adapter"
 
 module NIO
   module WebSocket

@@ -1,4 +1,4 @@
-require 'nio'
+require "nio"
 
 module NIO
   module WebSocket
@@ -26,10 +26,10 @@ module NIO
         end
 
         def start
-          WebSocket.logger.debug 'Starting reactor' unless @reactor
+          WebSocket.logger.debug "Starting reactor" unless @reactor
           @reactor ||= Thread.start do
             Thread.current.abort_on_exception = true
-            WebSocket.logger.info 'Reactor started'
+            WebSocket.logger.info "Reactor started"
             begin
               loop do
                 queue = []
@@ -53,7 +53,7 @@ module NIO
                 Thread.pass # give other threads a chance at manipulating our selector (e.g. a new connection on the main thread trying to register)
               end
             rescue => e
-              WebSocket.logger.fatal 'Error occured in reactor subsystem.'
+              WebSocket.logger.fatal "Error occured in reactor subsystem."
               WebSocket.logger.fatal "#{e.class}: #{e.message}"
               e.backtrace.map { |s| WebSocket.logger.fatal "\t#{s}" }
               raise

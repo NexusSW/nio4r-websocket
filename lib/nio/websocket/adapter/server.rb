@@ -1,4 +1,4 @@
-require 'nio/websocket/adapter'
+require "nio/websocket/adapter"
 
 module NIO
   module WebSocket
@@ -9,7 +9,7 @@ module NIO
           driver.on :connect do
             if ::WebSocket::Driver.websocket? driver.env
               driver.start
-              WebSocket.logger.debug 'driver connected'
+              WebSocket.logger.debug "driver connected"
             end
           end
           super io, driver, options

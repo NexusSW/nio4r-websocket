@@ -1,7 +1,7 @@
 #!/usr/bin/env ruby
 
-require 'bundler/setup'
-require 'nio4r/websocket'
+require "bundler/setup"
+require "nio4r/websocket"
 
-require 'irb'
+require "irb"
 IRB.start(__FILE__)

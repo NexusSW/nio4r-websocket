@@ -1,16 +1,16 @@
-require 'spec_helper'
-require 'timeout'
+require "spec_helper"
+require "timeout"
 
-shared_examples 'Core Tests' do
+shared_examples "Core Tests" do
   subject(:client) { WireUp.client }
   subject(:host) { WireUp.host }
-  it 'Accepts new connections' do
+  it "Accepts new connections" do
     expect(client).not_to be_nil
   end
-  context 'Client Driver' do
-    it 'completes the handshake' do
+  context "Client Driver" do
+    it "completes the handshake" do
       complete = false
-      client.ping('wait for it') do
+      client.ping("wait for it") do
         complete = true
       end
       Timeout.timeout(10) do
@@ -22,14 +22,14 @@ shared_examples 'Core Tests' do
       expect(complete).to be true
       expect(host).not_to be nil
     end
-    it 'receives a message from the host' do
-      expect(host.text('host test msg')).not_to eq false
+    it "receives a message from the host" do
+      expect(host.text("host test msg")).not_to eq false
       sleep 1
-      expect(client.last_message).to eq('host test msg')
+      expect(client.last_message).to eq("host test msg")
     end
-    it 'knows how to play ping/pong' do
+    it "knows how to play ping/pong" do
       ponged = nil
-      pinged = client.ping('test text') do
+      pinged = client.ping("test text") do
         ponged = true
       end
       expect(pinged).not_to eq false
@@ -37,22 +37,22 @@ shared_examples 'Core Tests' do
       expect(ponged).to eq true
     end
   end
-  context 'Host Driver' do
-    it 'receives a message from the client' do
-      expect(client.text('client test msg')).not_to eq false
+  context "Host Driver" do
+    it "receives a message from the client" do
+      expect(client.text("client test msg")).not_to eq false
       sleep 1
-      expect(host.last_message).to eq('client test msg')
+      expect(host.last_message).to eq("client test msg")
     end
-    it 'knows how to play ping/pong' do
+    it "knows how to play ping/pong" do
       ponged = nil
-      pinged = host.ping('test text') do
+      pinged = host.ping("test text") do
         ponged = true
       end
       expect(pinged).not_to eq false
       sleep 1
       expect(ponged).to eq true
     end
-    it 'can initiate a close' do
+    it "can initiate a close" do
       expect { host.close }.not_to raise_error
       sleep 1
       expect(host.state).to eq(:closed)
@@ -98,18 +98,18 @@ end
 NIO::WebSocket.logger.level = Logger::DEBUG
 # NIO::WebSocket.log_traffic = true
 describe NIO::WebSocket do
-  context 'ws://localhost:8080' do
+  context "ws://localhost:8080" do
     before :context do
       NIO::WebSocket.listen port: 8080 do |host|
         WireUp.add_host host
       end
-      NIO::WebSocket.connect 'ws://localhost:8080' do |client|
+      NIO::WebSocket.connect "ws://localhost:8080" do |client|
         WireUp.add_client client
       end
     end
-    include_examples 'Core Tests'
+    include_examples "Core Tests"
   end
-  context 'wss://localhost:8443' do
+  context "wss://localhost:8443" do
     before :context do
       retry_count = 3
       begin
@@ -120,7 +120,7 @@ describe NIO::WebSocket do
         raise
       end
 
-      name = OpenSSL::X509::Name.parse 'CN=nobody/DC=testing'
+      name = OpenSSL::X509::Name.parse "CN=nobody/DC=testing"
 
       cert = OpenSSL::X509::Certificate.new
       cert.version = 2
@@ -136,10 +136,10 @@ describe NIO::WebSocket do
       NIO::WebSocket.listen port: 8443, ssl_context: { key: key, cert: cert } do |driver|
         WireUp.add_host driver
       end
-      NIO::WebSocket.connect 'wss://localhost:8443', ssl_context: { verify_mode: OpenSSL::SSL::VERIFY_NONE } do |driver|
+      NIO::WebSocket.connect "wss://localhost:8443", ssl_context: { verify_mode: OpenSSL::SSL::VERIFY_NONE } do |driver|
         WireUp.add_client driver
       end
     end
-    include_examples 'Core Tests'
+    include_examples "Core Tests"
   end
 end

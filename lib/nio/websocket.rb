@@ -1,13 +1,13 @@
-require 'nio/websocket/version'
-require 'websocket/driver'
-require 'nio'
-require 'socket'
-require 'uri'
-require 'openssl'
-require 'logger'
-require 'nio/websocket/reactor'
-require 'nio/websocket/adapter/client'
-require 'nio/websocket/adapter/server'
+require "nio/websocket/version"
+require "websocket/driver"
+require "nio"
+require "socket"
+require "uri"
+require "openssl"
+require "logger"
+require "nio/websocket/reactor"
+require "nio/websocket/adapter/client"
+require "nio/websocket/adapter/server"
 
 module NIO
   module WebSocket
@@ -16,7 +16,7 @@ module NIO
       # @return [Logger] the current logger instance
       def logger
         @logger ||= begin
-        logger = Logger.new(STDERR, progname: 'WebSocket', level: Logger::ERROR)
+        logger = Logger.new(STDERR, progname: "WebSocket", level: Logger::ERROR)
         logger.level = Logger::ERROR
         logger
       end
@@ -29,7 +29,6 @@ module NIO
       def log_traffic=(enable)
         @log_traffic = enable
         logger.level = Logger::DEBUG if enable
-        enable
       end
 
       # Should raw traffic be logged through the logger?  Disabled by default for security reasons
@@ -83,7 +82,7 @@ module NIO
           end
         end
         Reactor.start
-        logger.info 'Host listening for new connections on port ' + options[:port].to_s
+        logger.info "Host listening for new connections on port " + options[:port].to_s
         server
       end
 
@@ -92,7 +91,7 @@ module NIO
 
       # Resets this API to a fresh state
       def reset
-        logger.info 'Resetting reactor subsystem'
+        logger.info "Resetting reactor subsystem"
         Reactor.reset
       end
 
@@ -103,10 +102,10 @@ module NIO
       # return an open socket given the url and options
       def open_socket(url, options)
         uri = URI(url)
-        port = uri.port || (uri.scheme == 'wss' ? 443 : 80) # redundant?  test uri.port if port is unspecified but because ws: & wss: aren't default protocols we'll maybe still need this(?)
+        port = uri.port || (uri.scheme == "wss" ? 443 : 80) # redundant?  test uri.port if port is unspecified but because ws: & wss: aren't default protocols we'll maybe still need this(?)
         logger.debug "Opening Connection to #{uri.hostname} on port #{port}"
         io = TCPSocket.new uri.hostname, port
-        return io unless uri.scheme == 'wss'
+        return io unless uri.scheme == "wss"
         logger.debug "Upgrading Connection #{io} to ssl"
         ssl = upgrade_to_ssl(io, options).connect
         logger.info "Connection #{io} upgraded to #{ssl}"
@@ -121,7 +120,7 @@ module NIO
       def accept_socket(server, options)
         waiting = accept_nonblock server
         if [:r, :w].include? waiting
-          logger.warn 'Expected to receive new connection, but the server is not quite ready'
+          logger.warn "Expected to receive new connection, but the server is not quite ready"
           return
         end
         logger.debug "Receiving new connection #{waiting} on port #{options[:port]}"
@@ -157,11 +156,11 @@ module NIO
       end
 
       def accept_nonblock(io)
-        return io.accept_nonblock
+        io.accept_nonblock
       rescue IO::WaitReadable
-        return :r
+        :r
       rescue IO::WaitWritable
-        return :w
+        :w
       end
 
       def upgrade_to_ssl(io, options)
