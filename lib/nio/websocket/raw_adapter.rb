@@ -29,7 +29,7 @@ module NIO
           begin
             read if monitor.readable?
             pump_buffer if monitor.writable?
-          rescue Errno::ECONNRESET, EOFError, Errno::ECONNABORTED, IOError
+          rescue Errno::ECONNRESET, EOFError, Errno::ECONNABORTED, IOError # rubocop:disable Lint/ShadowedException
             teardown
             WebSocket.logger.info "#{inner} socket closed"
           rescue IO::WaitReadable # rubocop:disable Lint/HandleExceptions
